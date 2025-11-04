@@ -238,16 +238,21 @@ class IBMAMLDataset(InMemoryDataset):
         val_mask[train_size:train_size + val_size] = True
         test_mask = mask.clone()
         test_mask[train_size + val_size:] = True
+        
+
 
         # 9. Create Data object and save
         data = Data(
             x=x, 
             edge_index=edge_index, 
             y=y, 
-            train_mask=train_mask, 
-            val_mask=val_mask, 
-            test_mask=test_mask
+            train_perf_eval_mask=train_mask, 
+            val_perf_eval_mask=val_mask, 
+            test_perf_eval_mask=test_mask
         )
 
         torch.save(self.collate([data]), self.processed_paths[0])
         print("Processing finished. Data object saved.")
+        
+        
+# SynthAML dataset
