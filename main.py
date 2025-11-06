@@ -83,7 +83,7 @@ datasets = ["Elliptic"]
 for x in datasets:
     data_for_optimization = x
     model_parameters, testing_results = run_optimization(
-        models=['GCN'],
+        models=['MLP', 'GCN', 'GAT', 'GIN'],
         data=elliptic_data,
         train_perf_eval=elliptic_data.train_perf_eval_mask,
         val_perf_eval=elliptic_data.val_perf_eval_mask,
@@ -93,5 +93,10 @@ for x in datasets:
         data_for_optimization=data_for_optimization
     )
 # %%
+def save_testing_results_csv(results, path=f"{data_for_optimization}_testing_results.csv"):
+    df = pd.DataFrame(results)
+    df.to_csv(f"csv_results/{data_for_optimization}_testing_results.csv", index=False)
+
+save_testing_results_csv(testing_results)
 # %%
 
