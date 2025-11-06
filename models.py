@@ -75,10 +75,10 @@ class GCN(torch.nn.Module):
     """
     A simple Graph Convolutional Network model.
     """
-    def __init__(self, in_channels, hidden_channels, out_channels, dropout):
-        super().__init__()
-        self.conv1 = GCNConv(in_channels, hidden_channels)
-        self.conv2 = GCNConv(hidden_channels, out_channels)
+    def __init__(self, num_node_features, num_classes, hidden_units, dropout=0.5):
+        super(GCN, self).__init__()
+        self.conv1 = GCNConv(num_node_features, hidden_units)
+        self.conv2 = GCNConv(hidden_units, num_classes)
         self.dropout = dropout
 
     def forward(self, data):

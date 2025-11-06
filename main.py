@@ -2,7 +2,7 @@
 # 1 is fraudulent
 #%% Settings for runs
 seeded_run = False
-prototyping = True
+prototyping = False
 num_epochs = 200
 
 
@@ -21,9 +21,8 @@ import torch_geometric
 from torch_geometric.data import DataLoader, Data
 from torch_geometric.nn import GCNConv, GATConv, GINConv, global_mean_pool
 
-import pytorch_lightning as pl
-from pytorch_lightning.callbacks import ModelCheckpoint, EarlyStopping
-from pytorch_lightning.loggers import TensorBoardLogger
+
+
 
 
 
@@ -69,6 +68,24 @@ if prototyping:
         print(f"Epoch {i+1:03d}, Train Loss: {train_loss:.4f}, Val Loss: {val_loss:.4f}, Val F1 illicit: {val_metrics['f1_illicit']:.4f}")
 
 # %%
-from training_and_testing import train_and_test
-test_metrics, best_f1 = train_and_test(model_wrapper, data, data.test_perf_eval_mask, num_epochs=num_epochs)
+#from training_and_testing import train_and_test
+#test_metrics, best_f1 = train_and_test(model_wrapper, data, data.test_perf_eval_mask, num_epochs=num_epochs)
+# %% Optuna runs
+from hyperparameter_tuning import run_optimization
+#datasets = ["Elliptic", "IBM_AML_HiSmall", "IBM_AML_LiSmall", "IBM_AML_HiMedium", "IBM_AML_LiMedium"]
+datasets = ["Elliptic"]
+for x in datasets:
+    data_for_optimization = x
+    model_parameters, testing_results = run_optimization(
+        models=['GCN'],
+        data=elliptic_data,
+        train_perf_eval=elliptic_data.train_perf_eval_mask,
+        val_perf_eval=elliptic_data.val_perf_eval_mask,
+        test_perf_eval=elliptic_data.test_perf_eval_mask,
+        train_mask=elliptic_data.train_mask,
+        val_mask=elliptic_data.val_mask,
+        data_for_optimization=data_for_optimization
+    )
 # %%
+# %%
+

@@ -3,6 +3,9 @@ import numpy as np
 import torch.nn as nn
 import torch.nn.functional as F
 from sklearn.metrics import accuracy_score, cohen_kappa_score, f1_score, precision_recall_curve, precision_recall_fscore_support, precision_score, recall_score, roc_auc_score
+from sklearn.preprocessing import StandardScaler
+from contextlib import contextmanager
+import gc
 
 
 try:
@@ -98,3 +101,284 @@ class FocalLoss(nn.Module):
         elif self.reduction == 'sum':
             return focal_loss.sum()
         return focal_loss
+    
+    
+import torch
+import torch.nn as nn
+from sklearn.svm import SVC
+from sklearn.ensemble import RandomForestClassifier
+from xgboost import XGBClassifier
+
+# Note: avoid top-level imports from `models` to prevent circular imports with `models.py`.
+# Import model classes and training helpers locally inside functions where they're needed.
+def balanced_class_weights(labels: torch.Tensor, num_classes: int = 2) -> torch.Tensor:
+    """
+    Compute inverse-frequency class weights (sum to 1) for 1-D integer labels.
+
+    Unlabelled entries (label < 0) are ignored.
+    """
+    if labels.ndim != 1:
+        labels = labels.view(-1)
+    labels = labels.detach()
+    valid = labels >= 0
+    if not torch.any(valid):
+        return torch.ones(num_classes, dtype=torch.float32) / float(num_classes)
+    filtered = labels[valid].to(torch.long).cpu()
+    counts = torch.bincount(filtered, minlength=num_classes).clamp_min(1)
+    inv = (1.0 / counts.float())
+    inv = inv / inv.sum()
+    return inv
+
+DEFAULT_EARLY_STOP = {
+    "patience": 20,
+    "min_delta": 1e-3,
+}
+EARLY_STOP_LOGGING = False
+
+def _early_stop_args_from(source: dict) -> dict:
+    """Build early stopping kwargs, falling back to defaults when keys are absent."""
+    return {
+        "patience": source.get("early_stop_patience", DEFAULT_EARLY_STOP["patience"]),
+        "min_delta": source.get("early_stop_min_delta", DEFAULT_EARLY_STOP["min_delta"]),
+        "log_early_stop": EARLY_STOP_LOGGING,
+    }
+
+def _get_model_instance(trial, model, data, device):
+    """
+    Helper function to suggest hyperparameters and instantiate a model
+    based on the model name.
+    """
+    if model == 'MLP':
+        from models import MLP
+        hidden_units = trial.suggest_int('hidden_units', 32, 256)
+        return MLP(num_node_features=data.num_node_features, num_classes=2, hidden_units=hidden_units)
+    
+    elif model == 'SVM':
+        from sklearn.svm import SVC
+        kernel = trial.suggest_categorical('kernel', ['linear', 'rbf'])
+        degree = trial.suggest_int('degree', 2, 5)
+        C = trial.suggest_float('C', 0.1, 10.0, log=True)
+        return SVC(kernel=kernel, C=C, class_weight='balanced', degree=degree)
+
+    elif model == 'XGB':
+        max_depth = trial.suggest_int('max_depth', 5, 15)
+        Gamma_XGB = trial.suggest_float('Gamma_XGB', 0, 5)
+        n_estimators = trial.suggest_int('n_estimators', 50, 500, step=50)
+        learning_rate = trial.suggest_float('learning_rate', 5e-5, 5e-3, log=True) # XGB learning rate
+        return XGBClassifier(
+            eval_metric='logloss',
+            scale_pos_weight=0.108,
+            learning_rate=learning_rate,
+            max_depth=max_depth,
+            n_estimators=n_estimators,
+            colsample_bytree=0.7,
+            gamma=Gamma_XGB
+        )
+
+    elif model == 'RF':
+        from sklearn.ensemble import RandomForestClassifier
+        n_estimators = trial.suggest_int('n_estimators', 50, 500, step=50)
+        max_depth = trial.suggest_int('max_depth', 5, 15)
+        return RandomForestClassifier(n_estimators=n_estimators, max_depth=max_depth, random_state=42)
+
+    elif model == 'GCN':
+        from models import GCN
+        hidden_units = trial.suggest_int('hidden_units', 32, 256)
+        return GCN(num_node_features=data.x.shape[1], num_classes=2, hidden_units=hidden_units)
+
+    elif model == 'GAT':
+        from models import GAT
+        hidden_units = trial.suggest_int('hidden_units', 32, 256)
+        num_heads = trial.suggest_int('num_heads', 1, 8)
+        return GAT(num_node_features=data.x.shape[1], num_classes=2, hidden_units=hidden_units, num_heads=num_heads)
+
+    elif model == 'GIN':
+        from models import GIN
+        hidden_units = trial.suggest_int('hidden_units', 32, 256)
+        return GIN(num_node_features=data.x.shape[1], num_classes=2, hidden_units=hidden_units)
+
+    else:
+        raise ValueError(f"Unknown model: {model}")
+
+def _run_wrapper_model_test(model_name, data, params, criterion, early_stop_args, device, train_perf_eval, val_perf_eval, test_perf_eval):
+    """
+    Helper to run the final test for MLP, GCN, GAT, and GIN models.
+    """
+    hidden_units = params.get("hidden_units", 64)
+    learning_rate = params.get("learning_rate", 0.005)
+    weight_decay = params.get("weight_decay", 0.0001)
+
+    # Import model classes locally to avoid circular import at module import time
+    from models import MLP, GCN, GAT, GIN
+
+    if model_name == "MLP":
+        model = MLP(num_node_features=data.num_features, num_classes=2, hidden_units=hidden_units).to(device)
+    elif model_name == "GCN":
+        model = GCN(num_node_features=data.num_features, num_classes=2, hidden_units=hidden_units).to(device)
+    elif model_name == "GAT":
+        num_heads = params.get("num_heads", 4)
+        model = GAT(num_node_features=data.num_features, num_classes=2, hidden_units=hidden_units, num_heads=num_heads).to(device)
+    elif model_name == "GIN":
+        model = GIN(num_node_features=data.num_features, num_classes=2, hidden_units=hidden_units).to(device)
+    else:
+        raise ValueError(f"Invalid wrapper model: {model_name}")
+
+    optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate, weight_decay=weight_decay)
+    # Import ModelWrapper locally to avoid circular import at module import time
+    from models import ModelWrapper
+    model_wrapper = ModelWrapper(model=model, optimizer=optimizer, criterion=criterion)
+
+    # Import training function locally to avoid pulling heavy dependencies at module import time
+    from training_and_testing import train_and_test
+
+    return train_and_test(
+        model_wrapper=model_wrapper,
+        data=data,
+        train_perf_eval=train_perf_eval,
+        val_perf_eval=val_perf_eval,
+        test_perf_eval=test_perf_eval,
+        **early_stop_args
+    )
+    
+def train_and_test_NMW_models(model_name, data, train_perf_eval, val_perf_eval, test_perf_eval, params_for_model):
+    match model_name:
+        case "SVM":
+            C = params_for_model.get("C", 1.0)
+            degree = params_for_model.get("degree", 3)
+            kernel = params_for_model.get("kernel", 'rbf')
+            svm_model = SVC(kernel=kernel, C=C, class_weight='balanced', degree=degree)
+            combined_mask = train_perf_eval | val_perf_eval
+            x_train = data.x[combined_mask].detach().cpu().numpy()
+            y_train = data.y[combined_mask].detach().cpu().numpy()
+            x_test = data.x[test_perf_eval].detach().cpu().numpy()
+            y_test = data.y[test_perf_eval].detach().cpu().numpy()
+            scaler = StandardScaler()
+            x_train = scaler.fit_transform(x_train)
+            x_test = scaler.transform(x_test)
+            svm_model.fit(x_train, y_train)
+            pred = svm_model.predict(x_test)
+            metrics = calculate_metrics(y_test, pred)
+            return metrics
+        case "RF":
+            n_estimators = params_for_model.get("n_estimators", 100)
+            max_depth = params_for_model.get("max_depth", 10)
+            rf_model = RandomForestClassifier(n_estimators=n_estimators, max_depth=max_depth, class_weight='balanced')
+            combined_mask = train_perf_eval | val_perf_eval
+            x_train = data.x[combined_mask].detach().cpu().numpy()
+            y_train = data.y[combined_mask].detach().cpu().numpy()
+            x_test = data.x[test_perf_eval].detach().cpu().numpy()
+            y_test = data.y[test_perf_eval].detach().cpu().numpy()
+            scaler = StandardScaler()
+            x_train = scaler.fit_transform(x_train)
+            x_test = scaler.transform(x_test)
+            rf_model.fit(x_train, y_train)
+            pred = rf_model.predict(x_test)
+            metrics = calculate_metrics(y_test, pred)
+            return metrics
+        case "XGB":
+            from xgboost import XGBClassifier
+            max_depth = params_for_model.get("max_depth", 10)
+            n_estimators = params_for_model.get("n_estimators", 100)
+            combined_mask = train_perf_eval | val_perf_eval
+            x_train = data.x[combined_mask].detach().cpu().numpy()
+            y_train = data.y[combined_mask].detach().cpu().numpy()
+            x_test = data.x[test_perf_eval].detach().cpu().numpy()
+            y_test = data.y[test_perf_eval].detach().cpu().numpy()
+            scaler = StandardScaler()
+            x_train = scaler.fit_transform(x_train)
+            x_test = scaler.transform(x_test)
+            pos = (y_train == 1).sum()
+            neg = (y_train == 0).sum()
+            scale_pos_weight = float(neg) / max(1.0, float(pos))
+            xgb_model = XGBClassifier(max_depth=max_depth, n_estimators=n_estimators, scale_pos_weight=scale_pos_weight)
+            xgb_model.fit(x_train, y_train)
+            pred = xgb_model.predict(x_test)
+            metrics = calculate_metrics(y_test, pred)
+            return metrics
+        
+@contextmanager
+def inference_mode_if_needed(model_name: str):
+    """
+    Context manager that disables gradient tracking if the model is CPU-based
+    or if we are in evaluation mode.
+    """
+    if model_name in ["SVM", "XGB", "RF"]:
+        with torch.no_grad():
+            yield
+    else:
+        yield
+
+def run_trial_with_cleanup(trial_func, model_name, *args, **kwargs):
+    """
+    Runs a trial function safely with:
+      - Automatic no_grad() for CPU-based models.
+      - GPU/CPU memory cleanup after each trial.
+    
+    Parameters
+    ----------
+    trial_func : callable
+        The trial function to run (e.g., objective).
+    model_name : str
+        Name of the model (MLP, SVM, XGB, RF, GCN, GAT, GIN).
+    *args, **kwargs :
+        Arguments to pass to trial_func.
+        
+    Returns
+    -------
+    result : Any
+        The return value of the trial function.
+    """
+    try:
+        with inference_mode_if_needed(model_name):
+            result = trial_func(*args, **kwargs)
+        return result
+    finally:
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+        gc.collect()
+        
+        
+def check_study_existence(model_name, data_for_optimization):
+    """
+    Check if an Optuna study exists and has a sufficient number of trials (>= 50).
+    
+    If a study exists but has fewer than 50 trials, it is automatically
+    deleted.
+    
+    Parameters
+    ----------
+    model_name : str
+        Name of the model (MLP, SVM, XGB, RF, GCN, GAT, GIN).
+    data_for_optimization : str
+        Name of the dataset used for optimization.
+        
+    Returns
+    -------
+    exists : bool
+        True if a study exists with >= 50 trials, False otherwise.
+    """
+    import optuna
+    study_name = f'{model_name}_optimization on {data_for_optimization} dataset'
+    storage_url = 'sqlite:///optimization_results.db'
+    
+    try:
+        # 1. Attempt to load the study
+        study = optuna.load_study(study_name=study_name, storage=storage_url)
+        
+        # 2. Study exists, check the number of trials (runs)
+        num_trials = len(study.trials)
+        
+        if num_trials < 50:
+            # 3. Less than 50 runs: wipe the study and return False
+            print(f"Study '{study_name}' found with only {num_trials} trials (< 50). Deleting study.")
+            optuna.delete_study(study_name=study_name, storage=storage_url)
+            return False
+        else:
+            # 4. 50 or more runs: study is valid, return True
+            print(f"Study '{study_name}' found with {num_trials} trials (>= 50). Study is valid.")
+            return True
+            
+    except KeyError:
+        # 5. Study does not exist: return False
+        print(f"Study '{study_name}' not found.")
+        return False

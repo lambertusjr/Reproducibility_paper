@@ -72,12 +72,6 @@ class EllipticDataset(InMemoryDataset):
         torch.save(self.collate([data]), self.processed_paths[0])
 
 
-
-
-
-
-
-
 class IBMAMLDataset(InMemoryDataset):
     def __init__(self, root, transform=None, pre_transform=None, pre_filter=None):
         super().__init__(root, transform, pre_transform, pre_filter)
@@ -254,5 +248,36 @@ class IBMAMLDataset(InMemoryDataset):
         torch.save(self.collate([data]), self.processed_paths[0])
         print("Processing finished. Data object saved.")
         
+    
         
-# SynthAML dataset
+#AMLSim dataset Unfinished
+class AMLSimDataset(InMemoryDataset):
+    def __init__(self, root, transform=None, pre_transform=None):
+        super(AMLSimDataset, self).__init__(root, transform, pre_transform)
+        self.data, self.slices = torch.load(self.processed_paths[0])
+
+    @property
+    def raw_file_names(self):
+        # elliptic_txs_features_raw.csv
+        # elliptic_txs_classes_raw.csv
+        # elliptic_txs_edgelist_raw.csv
+        return ['accounts.csv',
+                'transactions.csv',
+                'alerts.csv']
+
+    @property
+    def processed_file_names(self):
+        # The name of the file where the processed data will be saved.
+        return ['data.pt']
+
+
+    def process(self):
+        accounts_df = pd.read_csv(self.raw_paths[0], header=None)
+        transactions_df = pd.read_csv(self.raw_paths[1], header=None)
+        alerts_df = pd.read_csv(self.raw_paths[2], header=None)
+        
+        #placeholder
+        data = 1
+
+        # Save the processed data object.
+        torch.save(self.collate([data]), self.processed_paths[0])
