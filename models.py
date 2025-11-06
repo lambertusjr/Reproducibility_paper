@@ -28,13 +28,19 @@ class ModelWrapper:
         with _autocast(enabled=self._use_amp):
             out = self.model(data)
             loss = self.criterion(out[mask], data.y[mask])
+        
+        if torch.isnan(loss):
+            raise ValueError("Loss is NaN, stopping training")
+
         loss_value = float(loss.detach())
         if self._use_amp:
             self._scaler.scale(loss).backward()
+            torch.nn.utils.clip_grad_norm_(self.model.parameters(), 1.0)
             self._scaler.step(self.optimizer)
             self._scaler.update()
         else:
             loss.backward()
+            torch.nn.utils.clip_grad_norm_(self.model.parameters(), 1.0)
             self.optimizer.step()
         return loss_value
     def evaluate(self, data, mask):

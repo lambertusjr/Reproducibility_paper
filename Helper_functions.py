@@ -234,9 +234,6 @@ def _run_wrapper_model_test(model_name, data, params, criterion, early_stop_args
     return train_and_test(
         model_wrapper=model_wrapper,
         data=data,
-        train_perf_eval=train_perf_eval,
-        val_perf_eval=val_perf_eval,
-        test_perf_eval=test_perf_eval,
         **early_stop_args
     )
     

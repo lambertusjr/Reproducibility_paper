@@ -99,7 +99,6 @@ def update_best_weights(model, best_f1, current_f1, best_f1_model_wts):
 def train_and_test(
     model_wrapper,
     data,
-    test_perf_eval,
     num_epochs=200,
     patience=None,
     min_delta=0.0,
