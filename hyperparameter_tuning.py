@@ -32,15 +32,17 @@ def objective(trial, model, data, train_perf_eval, val_perf_eval, train_mask, va
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
     
     # --- Shared Hyperparameters ---
-    learning_rate = trial.suggest_float('learning_rate', 5e-5, 5e-3, log=True)
+    learning_rate = trial.suggest_float('learning_rate', 0.005, 0.05, log=True)
     weight_decay = trial.suggest_float('weight_decay', 1e-5, 1e-2, log=True)
     
     alpha_weights = balanced_class_weights(data.y[train_perf_eval])
     loss_type = trial.suggest_categorical('loss_type', ['focal', 'cross_entropy'])
+    #loss_type = 'focal'
     if loss_type == 'cross_entropy':
         criterion = nn.CrossEntropyLoss(weight=alpha_weights.to(device))
     else:
-        gamma_focal = trial.suggest_float('gamma_focal', 0.0, 5.0)
+        gamma_focal = trial.suggest_float('gamma_focal', 0.2, 5.0)
+        alpha_weights = alpha_weights.to(device)
         criterion = FocalLoss(alpha=alpha_weights, gamma=gamma_focal)
         
     early_stop_patience = trial.suggest_int('early_stop_patience', 5, 40)
@@ -101,7 +103,7 @@ def run_optimization(models, data, train_perf_eval, val_perf_eval, test_perf_eva
     focal_alpha_device = focal_alpha.to(device)
 
     for model_name in tqdm(models, desc="Models", unit="model"):
-        n_trials = 200
+        n_trials = 300
         study_name = f'{model_name}_optimization on {data_for_optimization} dataset'
         db_path = 'sqlite:///optimization_results.db'
 
