@@ -44,10 +44,16 @@ from models import GCN, ModelWrapper
 
 
 #%% Reading in data and pre-processing
-#Processing elliptic dataset
-elliptic_data = EllipticDataset(root='/Users/lambertusvanzyl/Documents/Datasets/Elliptic_dataset')[0]
-#Processing IBM AML dataset
-IBM_data = IBMAMLDataset(root='/Users/lambertusvanzyl/Documents/Datasets/IBM_AML_dataset')[0]
+if pc == "Darwin":
+    #Processing elliptic dataset
+    elliptic_data = EllipticDataset(root='/Users/lambertusvanzyl/Documents/Datasets/Elliptic_dataset')[0]
+    #Processing IBM AML dataset
+    IBM_data = IBMAMLDataset(root='/Users/lambertusvanzyl/Documents/Datasets/IBM_AML_dataset')[0]
+else:
+    #Processing elliptic dataset
+    elliptic_data = EllipticDataset(root='/Users/Lambertus/Desktop/Datasets/Elliptic_dataset')[0]
+    #Processing IBM AML dataset
+    IBM_data = IBMAMLDataset(root='/Users/Lambertus/Desktop/Datasets/IBM_AML_dataset')[0]
 
 
 # %%
