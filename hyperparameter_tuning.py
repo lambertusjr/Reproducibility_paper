@@ -32,7 +32,7 @@ def objective(trial, model, data, train_perf_eval, val_perf_eval, train_mask, va
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
     
     # --- Shared Hyperparameters ---
-    learning_rate = trial.suggest_float('learning_rate', 0.005, 0.05, log=True)
+    learning_rate = trial.suggest_float('learning_rate', 0.005, 0.05, log=False)
     weight_decay = trial.suggest_float('weight_decay', 1e-4, 1e-3, log=True)
     
     alpha_weights = balanced_class_weights(data.y[train_perf_eval])

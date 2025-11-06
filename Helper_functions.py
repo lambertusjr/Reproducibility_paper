@@ -87,9 +87,16 @@ class FocalLoss(nn.Module):
         with _autocast_disabled(device_type):
             ce_loss = F.cross_entropy(logits, targets, reduction='none')
         pt = torch.exp(-ce_loss)  # prob of the true class
-
+        
+        # Use log_softmax for numerical stability
+        log_probs = F.log_softmax(logits, dim=-1)
+        ce_loss = F.nll_loss(log_probs, targets, reduction='none')
+        
+        # More stable computation of pt
+        pt = torch.exp(-ce_loss).clamp(min=1e-7, max=1.0-1e-7)  # Prevent underflow/overflow
+        
         focal_loss = (1 - pt) ** self.gamma * ce_loss
-
+        
         # Apply alpha correctly depending on type
         if self.alpha is not None:
             alpha = self.alpha.to(inputs.device)
