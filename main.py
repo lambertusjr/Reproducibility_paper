@@ -86,7 +86,7 @@ datasets = ["Elliptic"]
 for x in datasets:
     data_for_optimization = x
     model_parameters, testing_results = run_optimization(
-        models=['MLP', 'GCN', 'GAT', 'GIN'],
+        models=['SVM', 'XGB', 'RF', 'MLP', 'GCN', 'GAT', 'GIN'],
         data=elliptic_data,
         train_perf_eval=elliptic_data.train_perf_eval_mask,
         val_perf_eval=elliptic_data.val_perf_eval_mask,
