@@ -5,6 +5,7 @@ import os
 import pandas as pd
 from tqdm import tqdm
 from datetime import timedelta
+from sklearn.preprocessing import StandardScaler
 
 
 class EllipticDataset(InMemoryDataset):
@@ -272,12 +273,63 @@ class AMLSimDataset(InMemoryDataset):
 
 
     def process(self):
-        accounts_df = pd.read_csv(self.raw_paths[0], header=None)
-        transactions_df = pd.read_csv(self.raw_paths[1], header=None)
-        alerts_df = pd.read_csv(self.raw_paths[2], header=None)
+        accounts_df = pd.read_csv(self.raw_paths[0])
+        transactions_df = pd.read_csv(self.raw_paths[1])
+        alerts_df = pd.read_csv(self.raw_paths[2])
+        #Getting nodes ready
+        #nodes = accounts_df[['ACCOUNT_ID', 'CUSTOMER_ID', 'INT_BALANCE']]
+        #Getting edges ready
+        edges = pd.merge(transactions_df, alerts_df, on='TX_ID', how='left')
+        edges_filtered = edges[['SENDER_ACCOUNT_ID_x', 'RECEIVER_ACCOUNT_ID_x', 'ALERT_TYPE', 'TX_AMOUNT_x', 'TIMESTAMP_x', 'IS_FRAUD_x']]
+        edges_filtered = edges_filtered.rename(columns={
+            'SENDER_ACCOUNT_ID_x': 'SENDER_ACCOUNT',
+            'RECEIVER_ACCOUNT_ID_x': 'RECEIVER_ACCOUNT',
+            'TX_AMOUNT_x': 'TX_AMOUNT',
+            'TIMESTAMP_x': 'TIMESTAMP',
+            'IS_FRAUD_x': 'IS_FRAUD'
+        })
+        #One-hot encoding of ALERT_TYPE
+        edges_filtered = pd.get_dummies(edges_filtered, columns=['ALERT_TYPE'], dtype=float)
         
-        #placeholder
-        data = 1
+        #Normalising numerical values
+        scaler = StandardScaler()
+        # nodes_standardised = pd.DataFrame(
+        #     scaler.fit_transform(nodes[['INT_BALANCE']]), 
+        #     columns=['INT_BALANCE']
+        # )
+
+        edges_standardised = pd.DataFrame(
+            scaler.fit_transform(edges_filtered[['TX_AMOUNT']]), 
+            columns=['TX_AMOUNT']
+        )
+        edges_filtered[['TX_AMOUNT']] = edges_standardised[['TX_AMOUNT']]
+        
+        
+        #Creating edge index
+        edge_index = torch.tensor(edges_filtered[['SENDER_ACCOUNT', 'RECEIVER_ACCOUNT']].values.T, dtype=torch.long)
+        #Creating feature tensor
+        x = torch.tensor(edges_filtered.drop(columns=['SENDER_ACCOUNT', 'RECEIVER_ACCOUNT', 'IS_FRAUD']).values, dtype=torch.float)
+        y = torch.tensor(edges_filtered['IS_FRAUD'].values, dtype=torch.float)
+        
+        
+        #Create masks (60/20/20)
+        # 8. Create Masks (60/20/20 split)
+        num_obs = len(edges_filtered)
+        mask = torch.tensor([False] * num_obs)
+        train_size = int(0.6 * num_obs)
+        val_size = int(0.2 * num_obs)
+
+        train_mask = mask.clone()
+        train_mask[:train_size] = True
+        val_mask = mask.clone()
+        val_mask[train_size:train_size + val_size] = True
+        test_mask = mask.clone()
+        test_mask[train_size + val_size:] = True
+        
+        data = Data(x=x, edge_index=edge_index, y=y
+                    , train_perf_eval_mask=train_mask
+                    , val_perf_eval_mask=val_mask
+                    , test_perf_eval_mask=test_mask)
 
         # Save the processed data object.
         torch.save(self.collate([data]), self.processed_paths[0])

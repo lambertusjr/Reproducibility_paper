@@ -2,7 +2,7 @@
 # 1 is fraudulent
 #%% Settings for runs
 seeded_run = False
-prototyping = False
+prototyping = True
 num_epochs = 200
 
 
@@ -39,7 +39,7 @@ else:
     seed = np.random.SeedSequence().entropy
 
 # Importing custom libraries
-from pre_processing import EllipticDataset, IBMAMLDataset
+from pre_processing import EllipticDataset, IBMAMLDataset, AMLSimDataset
 from models import GCN, ModelWrapper
 
 
@@ -49,12 +49,15 @@ if pc == "Darwin":
     elliptic_data = EllipticDataset(root='/Users/lambertusvanzyl/Documents/Datasets/Elliptic_dataset')[0]
     #Processing IBM AML dataset
     IBM_data = IBMAMLDataset(root='/Users/lambertusvanzyl/Documents/Datasets/IBM_AML_dataset')[0]
+    #Processing AMLSim dataset
+    AMLSim_data = AMLSimDataset(root='/Users/lambertusvanzyl/Documents/Datasets/AMLSim_dataset')[0]
 else:
     #Processing elliptic dataset
     elliptic_data = EllipticDataset(root='/Users/Lambertus/Desktop/Datasets/Elliptic_dataset')[0]
     #Processing IBM AML dataset
     IBM_data = IBMAMLDataset(root='/Users/Lambertus/Desktop/Datasets/IBM_AML_dataset')[0]
-
+    #Processing AMLSim dataset
+    AMLSim_data = AMLSimDataset(root='/Users/Lambertus/Desktop/Datasets/AMLSim_dataset')[0]
 
 # %%
 from torch.optim import Adam
@@ -65,7 +68,7 @@ if prototyping:
     hidden_units = 64
     learning_rate=0.05
     loss = nn.CrossEntropyLoss()
-    model = GCN(in_channels= data.num_node_features, hidden_channels=hidden_units, out_channels=2, dropout=0.5)
+    model = GCN(num_node_features=data.x.shape[1], num_classes=2, hidden_units=hidden_units)
     optimizer = Adam(model.parameters(), lr=learning_rate)
     model_wrapper = ModelWrapper(model, optimizer, loss)
     for i in range(1):
