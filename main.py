@@ -39,7 +39,7 @@ else:
     seed = np.random.SeedSequence().entropy
 
 # Importing custom libraries
-from pre_processing import EllipticDataset, IBMAMLDataset, AMLSimDataset
+from pre_processing import EllipticDataset, IBMAMLDataset_HiSmall, IBMAMLDataset_LiSmall, IBMAMLDataset_HiMedium, IBMAMLDataset_LiMedium, AMLSimDataset
 from models import GCN, ModelWrapper
 
 
@@ -48,14 +48,20 @@ if pc == "Darwin":
     #Processing elliptic dataset
     elliptic_data = EllipticDataset(root='/Users/lambertusvanzyl/Documents/Datasets/Elliptic_dataset')[0]
     #Processing IBM AML dataset
-    IBM_data = IBMAMLDataset(root='/Users/lambertusvanzyl/Documents/Datasets/IBM_AML_dataset')[0]
+    IBM_data_HiSmall = IBMAMLDataset_HiSmall(root='/Users/lambertusvanzyl/Documents/Datasets/IBM_AML_dataset/HiSmall')[0]
+    IBM_data_LiSmall = IBMAMLDataset_LiSmall(root='/Users/lambertusvanzyl/Documents/Datasets/IBM_AML_dataset/LiSmall')[0]
+    IBM_data_HiMedium = IBMAMLDataset_HiMedium(root='/Users/lambertusvanzyl/Documents/Datasets/IBM_AML_dataset/HiMedium')[0]
+    IBM_data_LiMedium = IBMAMLDataset_LiMedium(root='/Users/lambertusvanzyl/Documents/Datasets/IBM_AML_dataset/LiMedium')[0]
     #Processing AMLSim dataset
     AMLSim_data = AMLSimDataset(root='/Users/lambertusvanzyl/Documents/Datasets/AMLSim_dataset')[0]
 else:
     #Processing elliptic dataset
     elliptic_data = EllipticDataset(root='/Users/Lambertus/Desktop/Datasets/Elliptic_dataset')[0]
     #Processing IBM AML dataset
-    IBM_data = IBMAMLDataset(root='/Users/Lambertus/Desktop/Datasets/IBM_AML_dataset')[0]
+    IBM_data_HiSmall = IBMAMLDataset_HiSmall(root='/Users/Lambertus/Desktop/Datasets/IBM_AML_dataset/HiSmall')[0]
+    IBM_data_LiSmall = IBMAMLDataset_LiSmall(root='/Users/Lambertus/Desktop/Datasets/IBM_AML_dataset/LiSmall')[0]
+    IBM_data_HiMedium = IBMAMLDataset_HiMedium(root='/Users/Lambertus/Desktop/Datasets/IBM_AML_dataset/HiMedium')[0]
+    IBM_data_LiMedium = IBMAMLDataset_LiMedium(root='/Users/Lambertus/Desktop/Datasets/IBM_AML_dataset/LiMedium')[0]
     #Processing AMLSim dataset
     AMLSim_data = AMLSimDataset(root='/Users/Lambertus/Desktop/Datasets/AMLSim_dataset')[0]
 
@@ -81,18 +87,35 @@ if prototyping:
 #test_metrics, best_f1 = train_and_test(model_wrapper, data, data.test_perf_eval_mask, num_epochs=num_epochs)
 # %% Optuna runs
 from hyperparameter_tuning import run_optimization
-#datasets = ["Elliptic", "IBM_AML_HiSmall", "IBM_AML_LiSmall", "IBM_AML_HiMedium", "IBM_AML_LiMedium"]
-datasets = ["Elliptic"]
+datasets = ["Elliptic", "IBM_AML_HiSmall", "IBM_AML_LiSmall", "IBM_AML_HiMedium", "IBM_AML_LiMedium", "AMLSim"]
 for x in datasets:
-    data_for_optimization = x
+    match x:
+        case "Elliptic":
+            data_for_optimization = "Elliptic"
+            data = elliptic_data
+        case "IBM_AML_HiSmall":
+            data_for_optimization = "IBM_AML_HiSmall"
+            data = IBM_data_HiSmall
+        case "IBM_AML_LiSmall":
+            data_for_optimization = "IBM_AML_LiSmall"
+            data = IBM_data_LiSmall
+        case "IBM_AML_HiMedium":
+            data_for_optimization = "IBM_AML_HiMedium"
+            data = IBM_data_HiMedium
+        case "IBM_AML_LiMedium":
+            data_for_optimization = "IBM_AML_LiMedium"
+            data = IBM_data_LiMedium
+        case "AMLSim":
+            data_for_optimization = "AMLSim"
+            data = AMLSim_data
     model_parameters, testing_results = run_optimization(
         models=['SVM', 'XGB', 'RF', 'MLP', 'GCN', 'GAT', 'GIN'],
-        data=elliptic_data,
-        train_perf_eval=elliptic_data.train_perf_eval_mask,
-        val_perf_eval=elliptic_data.val_perf_eval_mask,
-        test_perf_eval=elliptic_data.test_perf_eval_mask,
-        train_mask=elliptic_data.train_mask,
-        val_mask=elliptic_data.val_mask,
+        data=data,
+        train_perf_eval=data.train_perf_eval_mask,
+        val_perf_eval=data.val_perf_eval_mask,
+        test_perf_eval=data.test_perf_eval_mask,
+        train_mask=data.train_mask,
+        val_mask=data.val_mask,
         data_for_optimization=data_for_optimization
     )
 # %%
