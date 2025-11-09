@@ -78,7 +78,8 @@ def objective(trial, model, data, train_perf_eval, val_perf_eval, train_mask, va
     elif model in sklearn_models:
         model_instance.fit(data.x[train_perf_eval].cpu().numpy(), data.y[train_perf_eval].cpu().numpy())
         pred = model_instance.predict(data.x[val_perf_eval].cpu().numpy())
-        metrics = calculate_metrics(data.y[val_perf_eval].cpu().numpy(), pred)
+        prob = model_instance.predict_proba(data.x[val_perf_eval].cpu().numpy())
+        metrics = calculate_metrics(data.y[val_perf_eval].cpu().numpy(), pred, prob)
         return metrics['f1_illicit']
     
     # All other model types (XGBe+GIN, GINe+XGB) have been removed.
@@ -103,7 +104,11 @@ def run_optimization(models, data, train_perf_eval, val_perf_eval, test_perf_eva
     focal_alpha_device = focal_alpha.to(device)
 
     for model_name in tqdm(models, desc="Models", unit="model"):
-        n_trials = 300
+        sklearn_models = ['SVM', 'XGB', 'RF']
+        if model_name in sklearn_models:
+            n_trials = 100
+        else:
+            n_trials = 300
         study_name = f'{model_name}_optimization on {data_for_optimization} dataset'
         db_path = 'sqlite:///optimization_results.db'
 

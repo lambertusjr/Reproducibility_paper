@@ -165,7 +165,7 @@ def _get_model_instance(trial, model, data, device):
         kernel = trial.suggest_categorical('kernel', ['linear', 'rbf'])
         degree = trial.suggest_int('degree', 2, 5)
         C = trial.suggest_float('C', 0.1, 10.0, log=True)
-        return SVC(kernel=kernel, C=C, class_weight='balanced', degree=degree)
+        return SVC(kernel=kernel, C=C, class_weight='balanced', degree=degree, probability=True)
 
     elif model == 'XGB':
         max_depth = trial.suggest_int('max_depth', 5, 15)
@@ -179,14 +179,15 @@ def _get_model_instance(trial, model, data, device):
             max_depth=max_depth,
             n_estimators=n_estimators,
             colsample_bytree=0.7,
-            gamma=Gamma_XGB
+            gamma=Gamma_XGB,
+            probability=True
         )
 
     elif model == 'RF':
         from sklearn.ensemble import RandomForestClassifier
         n_estimators = trial.suggest_int('n_estimators', 50, 500, step=50)
         max_depth = trial.suggest_int('max_depth', 5, 15)
-        return RandomForestClassifier(n_estimators=n_estimators, max_depth=max_depth, random_state=42)
+        return RandomForestClassifier(n_estimators=n_estimators, max_depth=max_depth, probability=True, class_weight='balanced')
 
     elif model == 'GCN':
         from models import GCN
@@ -250,7 +251,7 @@ def train_and_test_NMW_models(model_name, data, train_perf_eval, val_perf_eval, 
             C = params_for_model.get("C", 1.0)
             degree = params_for_model.get("degree", 3)
             kernel = params_for_model.get("kernel", 'rbf')
-            svm_model = SVC(kernel=kernel, C=C, class_weight='balanced', degree=degree)
+            svm_model = SVC(kernel=kernel, C=C, class_weight='balanced', degree=degree, probability=True)
             combined_mask = train_perf_eval | val_perf_eval
             x_train = data.x[combined_mask].detach().cpu().numpy()
             y_train = data.y[combined_mask].detach().cpu().numpy()
@@ -261,12 +262,13 @@ def train_and_test_NMW_models(model_name, data, train_perf_eval, val_perf_eval, 
             x_test = scaler.transform(x_test)
             svm_model.fit(x_train, y_train)
             pred = svm_model.predict(x_test)
-            metrics = calculate_metrics(y_test, pred)
+            prob = svm_model.predict_proba(x_test)
+            metrics = calculate_metrics(y_test, pred, prob)
             return metrics
         case "RF":
             n_estimators = params_for_model.get("n_estimators", 100)
             max_depth = params_for_model.get("max_depth", 10)
-            rf_model = RandomForestClassifier(n_estimators=n_estimators, max_depth=max_depth, class_weight='balanced')
+            rf_model = RandomForestClassifier(n_estimators=n_estimators, max_depth=max_depth, probability=True, class_weight='balanced')
             combined_mask = train_perf_eval | val_perf_eval
             x_train = data.x[combined_mask].detach().cpu().numpy()
             y_train = data.y[combined_mask].detach().cpu().numpy()
@@ -277,7 +279,8 @@ def train_and_test_NMW_models(model_name, data, train_perf_eval, val_perf_eval, 
             x_test = scaler.transform(x_test)
             rf_model.fit(x_train, y_train)
             pred = rf_model.predict(x_test)
-            metrics = calculate_metrics(y_test, pred)
+            prob = rf_model.predict_proba(x_test)
+            metrics = calculate_metrics(y_test, pred, prob)
             return metrics
         case "XGB":
             from xgboost import XGBClassifier
@@ -294,10 +297,11 @@ def train_and_test_NMW_models(model_name, data, train_perf_eval, val_perf_eval, 
             pos = (y_train == 1).sum()
             neg = (y_train == 0).sum()
             scale_pos_weight = float(neg) / max(1.0, float(pos))
-            xgb_model = XGBClassifier(max_depth=max_depth, n_estimators=n_estimators, scale_pos_weight=scale_pos_weight)
+            xgb_model = XGBClassifier(max_depth=max_depth, n_estimators=n_estimators, probability=True, scale_pos_weight=scale_pos_weight)
             xgb_model.fit(x_train, y_train)
             pred = xgb_model.predict(x_test)
-            metrics = calculate_metrics(y_test, pred)
+            prob = xgb_model.predict_proba(x_test)
+            metrics = calculate_metrics(y_test, pred, prob)
             return metrics
         
 @contextmanager

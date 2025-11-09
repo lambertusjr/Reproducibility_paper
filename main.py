@@ -2,7 +2,7 @@
 # 1 is fraudulent
 #%% Settings for runs
 seeded_run = False
-prototyping = True
+prototyping = False
 num_epochs = 200
 
 
