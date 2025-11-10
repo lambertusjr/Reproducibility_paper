@@ -56,12 +56,12 @@ if pc == "Darwin":
     AMLSim_data = AMLSimDataset(root='/Users/lambertusvanzyl/Documents/Datasets/AMLSim_dataset')[0]
 else:
     #Processing elliptic dataset
-    elliptic_data = EllipticDataset(root='/Users/Lambertus/Desktop/Datasets/Elliptic_dataset')[0]
+    #elliptic_data = EllipticDataset(root='/Users/Lambertus/Desktop/Datasets/Elliptic_dataset')[0]
     #Processing IBM AML dataset
-    IBM_data_HiSmall = IBMAMLDataset_HiSmall(root='/Users/Lambertus/Desktop/Datasets/IBM_AML_dataset/HiSmall')[0]
-    IBM_data_LiSmall = IBMAMLDataset_LiSmall(root='/Users/Lambertus/Desktop/Datasets/IBM_AML_dataset/LiSmall')[0]
-    IBM_data_HiMedium = IBMAMLDataset_HiMedium(root='/Users/Lambertus/Desktop/Datasets/IBM_AML_dataset/HiMedium')[0]
-    IBM_data_LiMedium = IBMAMLDataset_LiMedium(root='/Users/Lambertus/Desktop/Datasets/IBM_AML_dataset/LiMedium')[0]
+    #IBM_data_HiSmall = IBMAMLDataset_HiSmall(root='/Users/Lambertus/Desktop/Datasets/IBM_AML_dataset/HiSmall')[0]
+    #IBM_data_LiSmall = IBMAMLDataset_LiSmall(root='/Users/Lambertus/Desktop/Datasets/IBM_AML_dataset/LiSmall')[0]
+    #IBM_data_HiMedium = IBMAMLDataset_HiMedium(root='/Users/Lambertus/Desktop/Datasets/IBM_AML_dataset/HiMedium')[0]
+    #IBM_data_LiMedium = IBMAMLDataset_LiMedium(root='/Users/Lambertus/Desktop/Datasets/IBM_AML_dataset/LiMedium')[0]
     #Processing AMLSim dataset
     AMLSim_data = AMLSimDataset(root='/Users/Lambertus/Desktop/Datasets/AMLSim_dataset')[0]
 
@@ -86,8 +86,10 @@ if prototyping:
 #from training_and_testing import train_and_test
 #test_metrics, best_f1 = train_and_test(model_wrapper, data, data.test_perf_eval_mask, num_epochs=num_epochs)
 # %% Optuna runs
+
 from hyperparameter_tuning import run_optimization
-datasets = ["Elliptic", "IBM_AML_HiSmall", "IBM_AML_LiSmall", "IBM_AML_HiMedium", "IBM_AML_LiMedium", "AMLSim"]
+#datasets = ["IBM_AML_HiSmall", "IBM_AML_LiSmall", "IBM_AML_HiMedium", "IBM_AML_LiMedium", "AMLSim"]
+datasets = ['AMLSim']
 for x in datasets:
     match x:
         case "Elliptic":
@@ -108,8 +110,12 @@ for x in datasets:
         case "AMLSim":
             data_for_optimization = "AMLSim"
             data = AMLSim_data
+            
+    def save_testing_results_csv(results, path=f"{data_for_optimization}_testing_results.csv"):
+        df = pd.DataFrame(results)
+        df.to_csv(f"csv_results/{data_for_optimization}_testing_results.csv", index=False)
     model_parameters, testing_results = run_optimization(
-        models=['SVM', 'XGB', 'RF', 'MLP', 'GCN', 'GAT', 'GIN'],
+        models=['MLP', 'GCN', 'GAT', 'GIN'],
         data=data,
         train_perf_eval=data.train_perf_eval_mask,
         val_perf_eval=data.val_perf_eval_mask,
@@ -118,11 +124,7 @@ for x in datasets:
         val_mask=data.val_mask,
         data_for_optimization=data_for_optimization
     )
+    save_testing_results_csv(testing_results, path=f"{data_for_optimization}_testing_results.csv")
 # %%
-def save_testing_results_csv(results, path=f"{data_for_optimization}_testing_results.csv"):
-    df = pd.DataFrame(results)
-    df.to_csv(f"csv_results/{data_for_optimization}_testing_results.csv", index=False)
 
-save_testing_results_csv(testing_results)
-# %%
 

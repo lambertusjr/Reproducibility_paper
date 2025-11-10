@@ -171,11 +171,11 @@ def _get_model_instance(trial, model, data, device):
         max_depth = trial.suggest_int('max_depth', 5, 15)
         Gamma_XGB = trial.suggest_float('Gamma_XGB', 0, 5)
         n_estimators = trial.suggest_int('n_estimators', 50, 500, step=50)
-        learning_rate = trial.suggest_float('learning_rate', 5e-5, 5e-3, log=True) # XGB learning rate
+        learning_rate_XGB = trial.suggest_float('learning_rate_XGB', 0.005, 0.05, log=False) # XGB learning rate
         return XGBClassifier(
             eval_metric='logloss',
             scale_pos_weight=0.108,
-            learning_rate=learning_rate,
+            learning_rate=learning_rate_XGB,
             max_depth=max_depth,
             n_estimators=n_estimators,
             colsample_bytree=0.7,
@@ -187,7 +187,7 @@ def _get_model_instance(trial, model, data, device):
         from sklearn.ensemble import RandomForestClassifier
         n_estimators = trial.suggest_int('n_estimators', 50, 500, step=50)
         max_depth = trial.suggest_int('max_depth', 5, 15)
-        return RandomForestClassifier(n_estimators=n_estimators, max_depth=max_depth, probability=True, class_weight='balanced')
+        return RandomForestClassifier(n_estimators=n_estimators, max_depth=max_depth, class_weight='balanced')
 
     elif model == 'GCN':
         from models import GCN
@@ -268,7 +268,7 @@ def train_and_test_NMW_models(model_name, data, train_perf_eval, val_perf_eval, 
         case "RF":
             n_estimators = params_for_model.get("n_estimators", 100)
             max_depth = params_for_model.get("max_depth", 10)
-            rf_model = RandomForestClassifier(n_estimators=n_estimators, max_depth=max_depth, probability=True, class_weight='balanced')
+            rf_model = RandomForestClassifier(n_estimators=n_estimators, max_depth=max_depth, class_weight='balanced')
             combined_mask = train_perf_eval | val_perf_eval
             x_train = data.x[combined_mask].detach().cpu().numpy()
             y_train = data.y[combined_mask].detach().cpu().numpy()
@@ -297,7 +297,7 @@ def train_and_test_NMW_models(model_name, data, train_perf_eval, val_perf_eval, 
             pos = (y_train == 1).sum()
             neg = (y_train == 0).sum()
             scale_pos_weight = float(neg) / max(1.0, float(pos))
-            xgb_model = XGBClassifier(max_depth=max_depth, n_estimators=n_estimators, probability=True, scale_pos_weight=scale_pos_weight)
+            xgb_model = XGBClassifier(max_depth=max_depth, n_estimators=n_estimators, scale_pos_weight=scale_pos_weight)
             xgb_model.fit(x_train, y_train)
             pred = xgb_model.predict(x_test)
             prob = xgb_model.predict_proba(x_test)

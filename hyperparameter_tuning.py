@@ -36,10 +36,11 @@ def objective(trial, model, data, train_perf_eval, val_perf_eval, train_mask, va
     weight_decay = trial.suggest_float('weight_decay', 1e-4, 1e-3, log=True)
     
     alpha_weights = balanced_class_weights(data.y[train_perf_eval])
-    loss_type = trial.suggest_categorical('loss_type', ['focal', 'cross_entropy'])
-    #loss_type = 'focal'
+    #loss_type = trial.suggest_categorical('loss_type', ['focal', 'cross_entropy'])
+    loss_type = 'focal'
     if loss_type == 'cross_entropy':
         criterion = nn.CrossEntropyLoss(weight=alpha_weights.to(device))
+        learning_rate = trial.suggest_float('learning_rate', 0.001, 0.01, log=False) #Previous learning rate range was too high for CE
     else:
         gamma_focal = trial.suggest_float('gamma_focal', 0.2, 5.0)
         alpha_weights = alpha_weights.to(device)
@@ -106,9 +107,11 @@ def run_optimization(models, data, train_perf_eval, val_perf_eval, test_perf_eva
     for model_name in tqdm(models, desc="Models", unit="model"):
         sklearn_models = ['SVM', 'XGB', 'RF']
         if model_name in sklearn_models:
+            n_trials = 70
+        elif model_name == "MLP":
             n_trials = 100
         else:
-            n_trials = 300
+            n_trials = 200
         study_name = f'{model_name}_optimization on {data_for_optimization} dataset'
         db_path = 'sqlite:///optimization_results.db'
 

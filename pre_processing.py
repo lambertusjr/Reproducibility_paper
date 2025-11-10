@@ -234,8 +234,6 @@ class IBMAMLDataset_HiSmall(InMemoryDataset):
         test_mask = mask.clone()
         test_mask[train_size + val_size:] = True
         
-
-
         # 9. Create Data object and save
         data = Data(
             x=x, 
@@ -245,6 +243,14 @@ class IBMAMLDataset_HiSmall(InMemoryDataset):
             val_perf_eval_mask=val_mask, 
             test_perf_eval_mask=test_mask
         )
+        data.train_mask = train_mask
+        data.val_mask = val_mask
+        data.test_mask = test_mask
+
+        #Same as above since there are no unknown nodes in IBM AML dataset
+        data.train_perf_eval_mask = train_mask
+        data.val_perf_eval_mask = val_mask
+        data.test_perf_eval_mask = test_mask
 
         torch.save(self.collate([data]), self.processed_paths[0])
         print("Processing finished. Data object saved.")
@@ -421,7 +427,14 @@ class IBMAMLDataset_LiSmall(InMemoryDataset):
             val_perf_eval_mask=val_mask, 
             test_perf_eval_mask=test_mask
         )
+        data.train_mask = train_mask
+        data.val_mask = val_mask
+        data.test_mask = test_mask
 
+        #Same as above since there are no unknown nodes in IBM AML dataset
+        data.train_perf_eval_mask = train_mask
+        data.val_perf_eval_mask = val_mask
+        data.test_perf_eval_mask = test_mask
         torch.save(self.collate([data]), self.processed_paths[0])
         print("Processing finished. Data object saved.")
         
@@ -597,7 +610,14 @@ class IBMAMLDataset_LiMedium(InMemoryDataset):
             val_perf_eval_mask=val_mask, 
             test_perf_eval_mask=test_mask
         )
+        data.train_mask = train_mask
+        data.val_mask = val_mask
+        data.test_mask = test_mask
 
+        #Same as above since there are no unknown nodes in IBM AML dataset
+        data.train_perf_eval_mask = train_mask
+        data.val_perf_eval_mask = val_mask
+        data.test_perf_eval_mask = test_mask
         torch.save(self.collate([data]), self.processed_paths[0])
         print("Processing finished. Data object saved.")
         
@@ -763,7 +783,7 @@ class IBMAMLDataset_HiMedium(InMemoryDataset):
         test_mask[train_size + val_size:] = True
         
 
-
+        
         # 9. Create Data object and save
         data = Data(
             x=x, 
@@ -773,11 +793,18 @@ class IBMAMLDataset_HiMedium(InMemoryDataset):
             val_perf_eval_mask=val_mask, 
             test_perf_eval_mask=test_mask
         )
+        data.train_mask = train_mask
+        data.val_mask = val_mask
+        data.test_mask = test_mask
 
+        #Same as above since there are no unknown nodes in IBM AML dataset
+        data.train_perf_eval_mask = train_mask
+        data.val_perf_eval_mask = val_mask
+        data.test_perf_eval_mask = test_mask
         torch.save(self.collate([data]), self.processed_paths[0])
         print("Processing finished. Data object saved.")
         
-#AMLSim dataset Unfinished
+#AMLSim dataset
 class AMLSimDataset(InMemoryDataset):
     def __init__(self, root, transform=None, pre_transform=None):
         super(AMLSimDataset, self).__init__(root, transform, pre_transform)
@@ -854,10 +881,19 @@ class AMLSimDataset(InMemoryDataset):
         test_mask = mask.clone()
         test_mask[train_size + val_size:] = True
         
+
+        
         data = Data(x=x, edge_index=edge_index, y=y
                     , train_perf_eval_mask=train_mask
                     , val_perf_eval_mask=val_mask
                     , test_perf_eval_mask=test_mask)
+        data.train_mask = train_mask
+        data.val_mask = val_mask
+        data.test_mask = test_mask
 
+        #Same as above since there are no unknown nodes in IBM AML dataset
+        data.train_perf_eval_mask = train_mask
+        data.val_perf_eval_mask = val_mask
+        data.test_perf_eval_mask = test_mask
         # Save the processed data object.
         torch.save(self.collate([data]), self.processed_paths[0])
