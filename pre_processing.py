@@ -844,24 +844,29 @@ class AMLSimDataset(InMemoryDataset):
         #One-hot encoding of ALERT_TYPE
         edges_filtered = pd.get_dummies(edges_filtered, columns=['ALERT_TYPE'], dtype=float)
         
-        #Normalising numerical values
-        scaler = StandardScaler()
-        # nodes_standardised = pd.DataFrame(
-        #     scaler.fit_transform(nodes[['INT_BALANCE']]), 
-        #     columns=['INT_BALANCE']
-        # )
-
-        edges_standardised = pd.DataFrame(
-            scaler.fit_transform(edges_filtered[['TX_AMOUNT']]), 
-            columns=['TX_AMOUNT']
-        )
-        edges_filtered[['TX_AMOUNT']] = edges_standardised[['TX_AMOUNT']]
-        
         #Sorting by timestamp
         edges_filtered = edges_filtered.sort_values(by='TIMESTAMP')
 
         #Creating edge index
         edge_index = torch.tensor(edges_filtered[['SENDER_ACCOUNT', 'RECEIVER_ACCOUNT']].values.T, dtype=torch.long)
+        
+        #Create masks (60/20/20)
+        num_obs = len(edges_filtered)
+        train_size = int(0.6 * num_obs)
+        val_size = int(0.2 * num_obs)
+
+        train_df = edges_filtered.iloc[:train_size]
+        val_df = edges_filtered.iloc[train_size:train_size + val_size]
+        test_df = edges_filtered.iloc[train_size + val_size:]
+
+        #Normalising numerical values
+        scaler = StandardScaler()
+        train_df['TX_AMOUNT'] = scaler.fit_transform(train_df[['TX_AMOUNT']])
+        val_df['TX_AMOUNT'] = scaler.transform(val_df[['TX_AMOUNT']])
+        test_df['TX_AMOUNT'] = scaler.transform(test_df[['TX_AMOUNT']])
+
+        edges_filtered = pd.concat([train_df, val_df, test_df])
+
         #Creating feature tensor
         x = torch.tensor(edges_filtered.drop(columns=['SENDER_ACCOUNT', 'RECEIVER_ACCOUNT', 'IS_FRAUD']).values, dtype=torch.float)
         y = torch.tensor(edges_filtered['IS_FRAUD'].values, dtype=torch.float)
