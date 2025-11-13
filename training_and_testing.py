@@ -1,4 +1,5 @@
 import torch
+import gc
 import sklearn
 from sklearn.svm import SVC
 from sklearn.ensemble import RandomForestClassifier
@@ -8,6 +9,7 @@ from sklearn.preprocessing import StandardScaler
 from xgboost import XGBClassifier
 from Helper_functions import calculate_metrics
 from models import ModelWrapper, MLP
+from torch_geometric.loader import NeighborLoader
 
 
 def train_and_validate(
@@ -18,7 +20,8 @@ def train_and_validate(
     best_f1_model_wts=None,
     patience=None,
     min_delta=0.0,
-    log_early_stop=False
+    log_early_stop=False,
+    gradient_accumulation_steps=4
 ):
     # Device alignment guard (fail fast with clear message)
     mdl_dev = next(model_wrapper.model.parameters()).device
@@ -28,6 +31,13 @@ def train_and_validate(
             f"train_mask={data.train_perf_eval_mask.device}, val_mask={data.val_perf_eval_mask.device}"
         )
 
+    
+    train_loader = NeighborLoader(
+        data,
+        num_neighbors=[30] * 2,  # Sample 30 neighbors for each node for 2 hops.
+        batch_size=512, # Batch size of seed nodes
+        input_nodes=data.train_perf_eval_mask,
+    )
     
     metrics = {
         'accuracy': [],
@@ -45,12 +55,33 @@ def train_and_validate(
     }
     epochs_without_improvement = 0
     best_epoch = -1
+    
+    optimizer = model_wrapper.optimizer
+    optimizer.zero_grad()
 
     for epoch in range(num_epochs):
-        #print(f'Epoch {epoch+1}/{num_epochs}')
-        train_loss = model_wrapper.train_step(data, data.train_perf_eval_mask)
+        total_train_loss = 0
+        model_wrapper.model.train()
+        for i, batch in enumerate(train_loader):
+            batch = batch.to(mdl_dev)
+            loss = model_wrapper.get_loss(batch, batch.train_perf_eval_mask)
+            loss = loss / gradient_accumulation_steps
+            loss.backward()
+
+            if (i + 1) % gradient_accumulation_steps == 0 or (i + 1) == len(train_loader):
+                optimizer.step()
+                optimizer.zero_grad()
+
+            total_train_loss += loss.item()
+            del batch
+            torch.cuda.empty_cache()
+        
+        gc.collect()
+        torch.cuda.empty_cache()
+
+        avg_train_loss = total_train_loss / len(train_loader)
+
         val_loss, val_metrics = model_wrapper.evaluate(data, data.val_perf_eval_mask)
-        #print(f'Validation F1 Score: {val_metrics["f1_illicit"]:.4f}')
         
         metrics['accuracy'].append(val_metrics['accuracy'])
         metrics['precision_weighted'].append(val_metrics['precision'])

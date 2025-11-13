@@ -61,7 +61,7 @@ else:
     #IBM_data_HiSmall = IBMAMLDataset_HiSmall(root='/Users/Lambertus/Desktop/Datasets/IBM_AML_dataset/HiSmall')[0]
     #IBM_data_LiSmall = IBMAMLDataset_LiSmall(root='/Users/Lambertus/Desktop/Datasets/IBM_AML_dataset/LiSmall')[0]
     #IBM_data_HiMedium = IBMAMLDataset_HiMedium(root='/Users/Lambertus/Desktop/Datasets/IBM_AML_dataset/HiMedium')[0]
-    #IBM_data_LiMedium = IBMAMLDataset_LiMedium(root='/Users/Lambertus/Desktop/Datasets/IBM_AML_dataset/LiMedium')[0]
+    #BM_data_LiMedium = IBMAMLDataset_LiMedium(root='/Users/Lambertus/Desktop/Datasets/IBM_AML_dataset/LiMedium')[0]
     #Processing AMLSim dataset
     AMLSim_data = AMLSimDataset(root='/Users/Lambertus/Desktop/Datasets/AMLSim_dataset')[0]
 
@@ -115,7 +115,7 @@ for x in datasets:
         df = pd.DataFrame(results)
         df.to_csv(f"csv_results/{data_for_optimization}_testing_results.csv", index=False)
     model_parameters, testing_results = run_optimization(
-        models=['XGB', 'RF'],
+        models=['XGB', 'RF', ],
         data=data,
         train_perf_eval=data.train_perf_eval_mask,
         val_perf_eval=data.val_perf_eval_mask,

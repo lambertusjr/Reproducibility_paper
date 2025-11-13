@@ -53,6 +53,15 @@ class ModelWrapper:
             probs = torch.nn.functional.softmax(out, dim=1)
         metrics = calculate_metrics(data.y[mask].cpu().numpy(), pred[mask].cpu().numpy(), probs[mask].cpu().numpy())
         return float(loss.detach()), metrics
+    def get_loss(self, data, mask):
+        self.model.train()
+        with _autocast(enabled=self._use_amp):
+            out = self.model(data)
+            loss = self.criterion(out[mask], data.y[mask])
+        
+        if torch.isnan(loss):
+            raise ValueError("Loss is NaN, stopping training")
+        return loss
     
 try:
     from torch.amp import autocast as _torch_autocast
