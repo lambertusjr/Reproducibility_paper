@@ -5,7 +5,6 @@ from sklearn.svm import SVC
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.linear_model import LogisticRegression
-from sklearn.preprocessing import StandardScaler
 from xgboost import XGBClassifier
 from Helper_functions import calculate_metrics
 from models import ModelWrapper, MLP

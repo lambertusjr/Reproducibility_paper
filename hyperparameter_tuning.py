@@ -81,7 +81,7 @@ def objective(trial, model, data, train_perf_eval, val_perf_eval, train_mask, va
         pred = model_instance.predict(data.x[val_perf_eval].cpu().numpy())
         prob = model_instance.predict_proba(data.x[val_perf_eval].cpu().numpy())
         metrics = calculate_metrics(data.y[val_perf_eval].cpu().numpy(), pred, prob)
-        return metrics['f1']
+        return metrics['f1_illicit']
     
     # All other model types (XGBe+GIN, GINe+XGB) have been removed.
 

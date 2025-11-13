@@ -5,7 +5,6 @@ import os
 import pandas as pd
 from tqdm import tqdm
 from datetime import timedelta
-from sklearn.preprocessing import StandardScaler
 
 
 class EllipticDataset(InMemoryDataset):
@@ -842,7 +841,7 @@ class AMLSimDataset(InMemoryDataset):
             'IS_FRAUD_x': 'IS_FRAUD'
         })
         #One-hot encoding of ALERT_TYPE
-        edges_filtered = pd.get_dummies(edges_filtered, columns=['ALERT_TYPE'], dtype=float)
+        #edges_filtered = pd.get_dummies(edges_filtered, columns=['ALERT_TYPE'], dtype=float)
         
         #Sorting by timestamp
         edges_filtered = edges_filtered.sort_values(by='TIMESTAMP')
@@ -860,15 +859,15 @@ class AMLSimDataset(InMemoryDataset):
         test_df = edges_filtered.iloc[train_size + val_size:]
 
         #Normalising numerical values
-        scaler = StandardScaler()
-        train_df['TX_AMOUNT'] = scaler.fit_transform(train_df[['TX_AMOUNT']])
-        val_df['TX_AMOUNT'] = scaler.transform(val_df[['TX_AMOUNT']])
-        test_df['TX_AMOUNT'] = scaler.transform(test_df[['TX_AMOUNT']])
+        #scaler = StandardScaler()
+        #train_df['TX_AMOUNT'] = scaler.fit_transform(train_df[['TX_AMOUNT']])
+        #val_df['TX_AMOUNT'] = scaler.transform(val_df[['TX_AMOUNT']])
+        #test_df['TX_AMOUNT'] = scaler.transform(test_df[['TX_AMOUNT']])
 
         edges_filtered = pd.concat([train_df, val_df, test_df])
 
         #Creating feature tensor
-        x = torch.tensor(edges_filtered.drop(columns=['SENDER_ACCOUNT', 'RECEIVER_ACCOUNT', 'IS_FRAUD']).values, dtype=torch.float)
+        x = torch.tensor(edges_filtered.drop(columns=['SENDER_ACCOUNT', 'RECEIVER_ACCOUNT', 'IS_FRAUD', 'TIMESTAMP']).values, dtype=torch.float)
         y = torch.tensor(edges_filtered['IS_FRAUD'].values, dtype=torch.float)
         
         

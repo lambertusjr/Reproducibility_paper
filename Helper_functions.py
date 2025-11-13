@@ -3,7 +3,6 @@ import numpy as np
 import torch.nn as nn
 import torch.nn.functional as F
 from sklearn.metrics import accuracy_score, cohen_kappa_score, f1_score, precision_recall_curve, precision_recall_fscore_support, precision_score, recall_score, roc_auc_score
-from sklearn.preprocessing import StandardScaler
 from contextlib import contextmanager
 import gc
 
@@ -257,9 +256,9 @@ def train_and_test_NMW_models(model_name, data, train_perf_eval, val_perf_eval, 
             y_train = data.y[combined_mask].detach().cpu().numpy()
             x_test = data.x[test_perf_eval].detach().cpu().numpy()
             y_test = data.y[test_perf_eval].detach().cpu().numpy()
-            scaler = StandardScaler()
-            x_train = scaler.fit_transform(x_train)
-            x_test = scaler.transform(x_test)
+            #scaler = StandardScaler()
+            #x_train = scaler.fit_transform(x_train)
+            #x_test = scaler.transform(x_test)
             svm_model.fit(x_train, y_train)
             pred = svm_model.predict(x_test)
             prob = svm_model.predict_proba(x_test)
@@ -274,9 +273,9 @@ def train_and_test_NMW_models(model_name, data, train_perf_eval, val_perf_eval, 
             y_train = data.y[combined_mask].detach().cpu().numpy()
             x_test = data.x[test_perf_eval].detach().cpu().numpy()
             y_test = data.y[test_perf_eval].detach().cpu().numpy()
-            scaler = StandardScaler()
-            x_train = scaler.fit_transform(x_train)
-            x_test = scaler.transform(x_test)
+            #scaler = StandardScaler()
+            #x_train = scaler.fit_transform(x_train)
+            #x_test = scaler.transform(x_test)
             rf_model.fit(x_train, y_train)
             pred = rf_model.predict(x_test)
             prob = rf_model.predict_proba(x_test)
@@ -291,9 +290,9 @@ def train_and_test_NMW_models(model_name, data, train_perf_eval, val_perf_eval, 
             y_train = data.y[combined_mask].detach().cpu().numpy()
             x_test = data.x[test_perf_eval].detach().cpu().numpy()
             y_test = data.y[test_perf_eval].detach().cpu().numpy()
-            scaler = StandardScaler()
-            x_train = scaler.fit_transform(x_train)
-            x_test = scaler.transform(x_test)
+            #scaler = StandardScaler()
+            #x_train = scaler.fit_transform(x_train)
+            #x_test = scaler.transform(x_test)
             pos = (y_train == 1).sum()
             neg = (y_train == 0).sum()
             scale_pos_weight = float(neg) / max(1.0, float(pos))
