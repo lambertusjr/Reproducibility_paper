@@ -867,7 +867,7 @@ class AMLSimDataset(InMemoryDataset):
         edges_filtered = pd.concat([train_df, val_df, test_df])
 
         #Creating feature tensor
-        x = torch.tensor(edges_filtered.drop(columns=['SENDER_ACCOUNT', 'RECEIVER_ACCOUNT', 'IS_FRAUD', 'TIMESTAMP']).values, dtype=torch.float)
+        x = torch.tensor(edges_filtered.drop(columns=['SENDER_ACCOUNT', 'RECEIVER_ACCOUNT', 'IS_FRAUD', 'TIMESTAMP', 'ALERT_TYPE']).values, dtype=torch.float)
         y = torch.tensor(edges_filtered['IS_FRAUD'].values, dtype=torch.float)
         
         

@@ -115,7 +115,7 @@ for x in datasets:
         df = pd.DataFrame(results)
         df.to_csv(f"csv_results/{data_for_optimization}_testing_results.csv", index=False)
     model_parameters, testing_results = run_optimization(
-        models=['XGB', 'RF', 'SVM'],
+        models=['XGB', 'RF', 'MLP', 'GCN', 'GAT', 'GIN'],
         data=data,
         train_perf_eval=data.train_perf_eval_mask,
         val_perf_eval=data.val_perf_eval_mask,
