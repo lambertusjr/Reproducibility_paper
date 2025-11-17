@@ -94,7 +94,7 @@ def run_optimization(models, data, train_perf_eval, val_perf_eval, test_perf_eva
     
     METRIC_KEYS = [
         'accuracy', 'precision', 'precision_illicit', 'recall', 'recall_illicit',
-        'f1', 'f1_illicit', 'roc_auc', 'roc_auc_illicit', 'PR_curve', 'PRFS', 'kappa'
+        'f1', 'f1_illicit', 'roc_auc', 'roc_auc_illicit', 'PR_curve', 'PRAUC', 'kappa'
     ]
     testing_results = {
         model_name: {key: [] for key in METRIC_KEYS} 

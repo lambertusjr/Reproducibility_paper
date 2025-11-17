@@ -41,7 +41,7 @@ def train_and_validate(
         'roc_auc': [],
         'roc_auc_illicit': [],
         'PR_curve': [],
-        'PRFS': [],
+        'PRAUC': [],
         'kappa': [] 
     }
     epochs_without_improvement = 0
@@ -68,7 +68,7 @@ def train_and_validate(
         metrics['roc_auc'].append(val_metrics['roc_auc'])
         metrics['roc_auc_illicit'].append(val_metrics['roc_auc_illicit'])
         metrics['PR_curve'].append(val_metrics['PR_curve'])
-        metrics['PRFS'].append(val_metrics['PRFS'])
+        metrics['PRAUC'].append(val_metrics['PRAUC'])
         metrics['kappa'].append(val_metrics['kappa'])
 
         current_f1 = val_metrics['f1_illicit']
