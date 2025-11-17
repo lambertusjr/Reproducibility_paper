@@ -172,7 +172,7 @@ def run_optimization(models, data, train_perf_eval, val_perf_eval, test_perf_eva
                     # This will now catch any models you removed, like 'XGBe+GIN'
                     print(f"Warning: No test logic defined for {model_name}. Skipping.")
                     continue
-            
+            print(f"Test metrics for {model_name} run: {test_metrics}")
             # --- Centralized Metric Appending ---
             for key in METRIC_KEYS:
                 if key in test_metrics:
