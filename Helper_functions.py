@@ -2,7 +2,7 @@ import torch
 import numpy as np
 import torch.nn as nn
 import torch.nn.functional as F
-from sklearn.metrics import accuracy_score, cohen_kappa_score, f1_score, precision_recall_curve, precision_recall_fscore_support, precision_score, recall_score, roc_auc_score
+from sklearn.metrics import accuracy_score, cohen_kappa_score, f1_score, precision_recall_curve, precision_recall_fscore_support, precision_score, recall_score, roc_auc_score, auc
 from contextlib import contextmanager
 import gc
 
@@ -31,7 +31,7 @@ def calculate_metrics(y_true, y_pred, y_pred_prob):
     roc_auc_illicit = roc_auc_score(y_true, y_pred_prob[:,1])
     
     PR_curve = precision_recall_curve(y_true, y_pred_prob[:,1])
-    PRFS = precision_recall_fscore_support(y_true, y_pred, average='weighted', zero_division=0)
+    PRAUC = auc(PR_curve[1], PR_curve[0])
     
     kappa = cohen_kappa_score(y_true, y_pred)
     
@@ -46,7 +46,7 @@ def calculate_metrics(y_true, y_pred, y_pred_prob):
         'roc_auc': roc_auc,
         'roc_auc_illicit': roc_auc_illicit,
         'PR_curve': PR_curve,
-        'PRFS': PRFS,
+        'PRAUC': PRAUC,
         'kappa': kappa,
     }
     
