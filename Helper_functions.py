@@ -192,7 +192,7 @@ def _get_model_instance(trial, model, data, device):
             colsample_bytree=colsample_bytree,
             gamma=Gamma_XGB,
             subsample=subsample,
-            tree_method = "gpu_hist" if torch.cuda.is_available() else "hist"
+            device = "cuda" if torch.cuda.is_available() else "cpu"
         )
 
     elif model == 'RF':
