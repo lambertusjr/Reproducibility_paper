@@ -8,6 +8,7 @@ from Helper_functions import calculate_metrics, balanced_class_weights, FocalLos
 from tqdm import tqdm, trange
 from training_and_testing import train_and_validate, train_and_test
 from torch.optim import Adam
+import gc
 
 models = ['MLP', 'SVM', 'XGB', 'RF', 'GCN', 'GAT', 'GIN']
 
@@ -31,63 +32,107 @@ def _early_stop_args_from(source: dict) -> dict:
 def objective(trial, model, data, train_perf_eval, val_perf_eval, train_mask, val_mask):
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
     
-    # --- Shared Hyperparameters ---
-    learning_rate = trial.suggest_float('learning_rate', 0.005, 0.05, log=False)
-    weight_decay = trial.suggest_float('weight_decay', 1e-4, 1e-3, log=True)
-    
-    alpha_weights = balanced_class_weights(data.y[train_perf_eval])
-    #loss_type = trial.suggest_categorical('loss_type', ['focal', 'cross_entropy'])
-    loss_type = 'focal'
-    if loss_type == 'cross_entropy':
-        criterion = nn.CrossEntropyLoss(weight=alpha_weights.to(device))
-        learning_rate = trial.suggest_float('learning_rate', 0.001, 0.01, log=False) #Previous learning rate range was too high for CE
-    else:
-        gamma_focal = trial.suggest_float('gamma_focal', 0.2, 5.0)
-        alpha_weights = alpha_weights.to(device)
-        criterion = FocalLoss(alpha=alpha_weights, gamma=gamma_focal)
+    # Define models before try block to ensure they exist in 'locals()' for finally
+    model_instance = None
+    optimizer = None
+    model_wrapper = None
+    criterion = None
+
+    try:
+        # --- Shared Hyperparameters ---
+        learning_rate = trial.suggest_float('learning_rate', 0.005, 0.05, log=False)
+        weight_decay = trial.suggest_float('weight_decay', 1e-4, 1e-3, log=True)
         
-    early_stop_patience = trial.suggest_int('early_stop_patience', 5, 40)
-    early_stop_min_delta = trial.suggest_float('early_stop_min_delta', 1e-4, 5e-3, log=True)
-    num_epochs = trial.suggest_int('num_epochs', 50, 250)
-    trial_early_stop_args = _early_stop_args_from({
-        "early_stop_patience": early_stop_patience,
-        "early_stop_min_delta": early_stop_min_delta
-    })
+        # Note: data.y is on device, so .cpu() is needed for balanced_class_weights
+        alpha_weights = balanced_class_weights(data.y[train_perf_eval].cpu()) 
+        #loss_type = trial.suggest_categorical('loss_type', ['focal', 'cross_entropy'])
+        loss_type = 'focal'
+        if loss_type == 'cross_entropy':
+            criterion = nn.CrossEntropyLoss(weight=alpha_weights.to(device))
+            learning_rate = trial.suggest_float('learning_rate', 0.001, 0.01, log=False) #Previous learning rate range was too high for CE
+        else:
+            gamma_focal = trial.suggest_float('gamma_focal', 0.2, 5.0)
+            alpha_weights = alpha_weights.to(device)
+            criterion = FocalLoss(alpha=alpha_weights, gamma=gamma_focal)
+            
+        early_stop_patience = trial.suggest_int('early_stop_patience', 5, 40)
+        early_stop_min_delta = trial.suggest_float('early_stop_min_delta', 1e-4, 5e-3, log=True)
+        num_epochs = trial.suggest_int('num_epochs', 50, 250)
+        trial_early_stop_args = _early_stop_args_from({
+            "early_stop_patience": early_stop_patience,
+            "early_stop_min_delta": early_stop_min_delta
+        })
 
-    # --- Model Instantiation (Refactored) ---
-    model_instance = _get_model_instance(trial, model, data, device)
+        # --- Model Instantiation (Refactored) ---
+        model_instance = _get_model_instance(trial, model, data, device)
 
-    # --- Training and Evaluation ---
-    wrapper_models = ['MLP', 'GCN', 'GAT', 'GIN']
-    sklearn_models = ['SVM', 'XGB', 'RF']
-    
-    data = data.to(device)
-    train_perf_eval = train_perf_eval.to(device)
-    val_perf_eval = val_perf_eval.to(device)
-
-    if model in wrapper_models:
-        optimizer = torch.optim.Adam(model_instance.parameters(), lr=learning_rate, weight_decay=weight_decay)
-        model_wrapper = ModelWrapper(model_instance, optimizer, criterion)
-        model_wrapper.model.to(device)
+        # --- Training and Evaluation ---
+        wrapper_models = ['MLP', 'GCN', 'GAT', 'GIN']
+        sklearn_models = ['SVM', 'XGB', 'RF']
         
-        metrics, best_model_wts, best_f1 = train_and_validate(
-            model_wrapper, data,num_epochs=num_epochs,
-            **trial_early_stop_args
-        )
-        return best_f1
+        # --- DATA IS ALREADY ON DEVICE ---
+        # data = data.to(device) # <--- REMOVED
+        # train_perf_eval = train_perf_eval.to(device) # <--- REMOVED
+        # val_perf_eval = val_perf_eval.to(device) # <--- REMOVED
 
-    elif model in sklearn_models:
-        model_instance.fit(data.x[train_perf_eval].cpu().numpy(), data.y[train_perf_eval].cpu().numpy())
-        pred = model_instance.predict(data.x[val_perf_eval].cpu().numpy())
-        prob = model_instance.predict_proba(data.x[val_perf_eval].cpu().numpy())
-        metrics = calculate_metrics(data.y[val_perf_eval].cpu().numpy(), pred, prob)
-        return metrics['f1_illicit']
+        if model in wrapper_models:
+            optimizer = torch.optim.Adam(model_instance.parameters(), lr=learning_rate, weight_decay=weight_decay)
+            model_wrapper = ModelWrapper(model_instance, optimizer, criterion)
+            model_wrapper.model.to(device)
+            
+            metrics, best_model_wts, best_f1 = train_and_validate(
+                model_wrapper, data,num_epochs=num_epochs,
+                **trial_early_stop_args
+            )
+            return best_f1
+
+        elif model in sklearn_models:
+            # Data must be on CPU for sklearn
+            train_x = data.x[train_perf_eval].cpu().numpy()
+            train_y = data.y[train_perf_eval].cpu().numpy()
+            val_x = data.x[val_perf_eval].cpu().numpy()
+            val_y = data.y[val_perf_eval].cpu().numpy()
+
+            model_instance.fit(train_x, train_y)
+            pred = model_instance.predict(val_x)
+            prob = model_instance.predict_proba(val_x)
+            metrics = calculate_metrics(val_y, pred, prob)
+            
+            # Clean up large numpy arrays
+            del train_x, train_y, val_x, val_y, pred, prob
+            
+            return metrics['f1_illicit']
+        
+    finally:
+        # --- GUARANTEED CLEANUP ---
+        # This block runs whether the trial succeeds, fails, or is pruned.
+        if model_instance is not None:
+            del model_instance
+        if model_wrapper is not None:
+            del model_wrapper
+        if optimizer is not None:
+            del optimizer
+        if criterion is not None:
+            del criterion
+        
+        gc.collect() # Run Python's garbage collector
+        if device == 'cuda':
+            torch.cuda.empty_cache() # Clear PyTorch's CUDA cache
     
     # All other model types (XGBe+GIN, GINe+XGB) have been removed.
 
 
 def run_optimization(models, data, train_perf_eval, val_perf_eval, test_perf_eval, train_mask, val_mask, data_for_optimization):
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
+
+    # --- MOVE DATA AND MASKS TO DEVICE ONCE ---
+    data = data.to(device)
+    train_perf_eval = train_perf_eval.to(device)
+    val_perf_eval = val_perf_eval.to(device)
+    test_perf_eval = test_perf_eval.to(device)
+    # train_mask and val_mask are not used in objective, move if needed
+    # train_mask = train_mask.to(device) 
+    # val_mask = val_mask.to(device)
 
     # --- Dynamically create result dictionaries ---
     model_parameters = {model_name: [] for model_name in models}
@@ -101,7 +146,8 @@ def run_optimization(models, data, train_perf_eval, val_perf_eval, test_perf_eva
         for model_name in models
     }
     
-    focal_alpha = balanced_class_weights(data.y[train_perf_eval])
+    # .cpu() is required as data.y is now on device
+    focal_alpha = balanced_class_weights(data.y[train_perf_eval].cpu()) 
     focal_alpha_device = focal_alpha.to(device)
 
     for model_name in tqdm(models, desc="Models", unit="model"):
@@ -127,8 +173,10 @@ def run_optimization(models, data, train_perf_eval, val_perf_eval, test_perf_eva
             with tqdm(total=n_trials, desc=f"{model_name} trials", leave=False, unit="trial") as trial_bar:
                 def _optuna_progress_callback(study, trial):
                     trial_bar.update()
+                
+                # Note: data, train_perf_eval, etc., are now the device tensors
                 study.optimize(
-                    lambda trial: run_trial_with_cleanup( # Assumes run_trial_with_cleanup exists
+                    lambda trial: run_trial_with_cleanup( 
                         objective, model_name, trial, model_name, data, train_perf_eval, val_perf_eval, train_mask, val_mask
                     ),
                     n_trials=n_trials,
@@ -145,7 +193,8 @@ def run_optimization(models, data, train_perf_eval, val_perf_eval, test_perf_eva
             criterion = nn.CrossEntropyLoss(weight=focal_alpha_device)
         else:
             gamma_focal = params_for_model.get("gamma_focal", 2.0)
-            criterion = FocalLoss(alpha=focal_alpha, gamma=gamma_focal)
+            # Use focal_alpha_device, not focal_alpha
+            criterion = FocalLoss(alpha=focal_alpha_device, gamma=gamma_focal) 
         early_stop_args = _early_stop_args_from(params_for_model)
 
         # --- Final Test Runs (Refactored) ---
@@ -162,20 +211,44 @@ def run_optimization(models, data, train_perf_eval, val_perf_eval, test_perf_eva
                 case "SVM" | "RF" | "XGB":
                     test_metrics = train_and_test_NMW_models(
                         model_name=model_name,
-                        data=data,
+                        data=data, # This function will need to do .cpu() internally
                         train_perf_eval=train_perf_eval,
                         val_perf_eval=val_perf_eval,
                         test_perf_eval=test_perf_eval,
                         params_for_model=params_for_model
                     )
                 case _:
-                    # This will now catch any models you removed, like 'XGBe+GIN'
                     print(f"Warning: No test logic defined for {model_name}. Skipping.")
                     continue
-            print(f"Test metrics for {model_name} run: {test_metrics}")
+            print(f"Test metrics for {model_name} run:", test_metrics)
             # --- Centralized Metric Appending ---
             for key in METRIC_KEYS:
                 if key in test_metrics:
                     testing_results[model_name][key].append(test_metrics[key])
+
+            # --- CLEANUP *INSIDE* TEST LOOP ---
+            # Assumes _run_wrapper_model_test & train_and_test_NMW_models
+            # create and destroy their own models. This is extra insurance.
+            del test_metrics
+            gc.collect()
+            if device == 'cuda':
+                torch.cuda.empty_cache()
+
+        # --- CLEANUP *AFTER* 30-RUN LOOP ---
+        # Clean up before starting the next model's optimization
+        del params_for_model
+        del criterion
+        del early_stop_args
+        del study # Free study object, it's saved to DB
+        gc.collect()
+        if device == 'cuda':
+            torch.cuda.empty_cache()
+
+    # --- FINAL CLEANUP ---
+    # Move data back to CPU if needed elsewhere, or delete
+    del data, train_perf_eval, val_perf_eval, test_perf_eval
+    gc.collect()
+    if device == 'cuda':
+        torch.cuda.empty_cache()
 
     return model_parameters, testing_results
