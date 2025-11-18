@@ -18,6 +18,16 @@ except (ImportError, AttributeError):
     def _autocast_disabled(device_type: str):
         return _autocast_old(enabled=False)
 
+def calculate_scale_pos_weight(data):
+    """
+    Calculate the scale_pos_weight for imbalanced datasets.
+    """
+    train_mask = data.train_mask
+    y_train = data.y[train_mask].numpy()
+    pos = (y_train == 1).sum()
+    neg = (y_train == 0).sum()
+    return float(neg) / float(pos)
+
 def calculate_metrics(y_true, y_pred, y_pred_prob):
     accuracy = accuracy_score(y_true, y_pred)
     precision = precision_score(y_true, y_pred, average='weighted', zero_division=0)
@@ -171,14 +181,17 @@ def _get_model_instance(trial, model, data, device):
         Gamma_XGB = trial.suggest_float('Gamma_XGB', 0, 5)
         n_estimators = trial.suggest_int('n_estimators', 50, 500, step=50)
         learning_rate_XGB = trial.suggest_float('learning_rate_XGB', 0.005, 0.05, log=False) # XGB learning rate
+        colsample_bytree = trial.suggest_float('colsample_bytree', 0.5, 1.0)
+        subsample = trial.suggest_float('subsample', 0.5, 1.0)
         return XGBClassifier(
             eval_metric='logloss',
-            scale_pos_weight=0.108,
+            scale_pos_weight=calculate_scale_pos_weight(data),
             learning_rate=learning_rate_XGB,
             max_depth=max_depth,
             n_estimators=n_estimators,
-            colsample_bytree=0.7,
+            colsample_bytree=colsample_bytree,
             gamma=Gamma_XGB,
+            subsample=subsample,
             probability=True
         )
 
