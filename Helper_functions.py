@@ -23,7 +23,7 @@ def calculate_scale_pos_weight(data):
     Calculate the scale_pos_weight for imbalanced datasets.
     """
     train_mask = data.train_mask
-    y_train = data.y[train_mask].numpy()
+    y_train = data.y[train_mask].cpu().numpy()
     pos = (y_train == 1).sum()
     neg = (y_train == 0).sum()
     return float(neg) / float(pos)
@@ -192,7 +192,7 @@ def _get_model_instance(trial, model, data, device):
             colsample_bytree=colsample_bytree,
             gamma=Gamma_XGB,
             subsample=subsample,
-            probability=True
+            tree_method = "gpu_hist" if torch.cuda.is_available() else "hist"
         )
 
     elif model == 'RF':
