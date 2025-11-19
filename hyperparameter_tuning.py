@@ -120,6 +120,8 @@ def objective(trial, model, data, train_perf_eval, val_perf_eval, train_mask, va
             del pred
         if 'prob' in locals():
             del prob
+        if 'best_model_wts' in locals():
+            del best_model_wts
         
         gc.collect() # Run Python's garbage collector
         if device == 'cuda':
