@@ -114,6 +114,12 @@ def objective(trial, model, data, train_perf_eval, val_perf_eval, train_mask, va
             del optimizer
         if criterion is not None:
             del criterion
+        if 'out' in locals():
+            del out
+        if 'pred' in locals():
+            del pred
+        if 'prob' in locals():
+            del prob
         
         gc.collect() # Run Python's garbage collector
         if device == 'cuda':
@@ -121,7 +127,20 @@ def objective(trial, model, data, train_perf_eval, val_perf_eval, train_mask, va
     
     # All other model types (XGBe+GIN, GINe+XGB) have been removed.
 
-
+def run_trial_with_aggressive_cleanup(trial_func, *args, **kwargs):
+    """
+    More aggressive memory cleanup specifically for hyperparameter optimization
+    """
+    try:
+        result = trial_func(*args, **kwargs)
+        return result
+    finally:
+        # Force cleanup of any lingering tensors
+        if torch.cuda.is_available():
+            torch.cuda.synchronize()  # Wait for all kernels to finish
+            torch.cuda.empty_cache()  # Clear cache
+        gc.collect(generation=2)  # Force full garbage collection
+        
 def run_optimization(models, data, train_perf_eval, val_perf_eval, test_perf_eval, train_mask, val_mask, data_for_optimization):
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
@@ -176,7 +195,7 @@ def run_optimization(models, data, train_perf_eval, val_perf_eval, test_perf_eva
                 
                 # Note: data, train_perf_eval, etc., are now the device tensors
                 study.optimize(
-                    lambda trial: run_trial_with_cleanup( 
+                    lambda trial: run_trial_with_aggressive_cleanup( 
                         objective, model_name, trial, model_name, data, train_perf_eval, val_perf_eval, train_mask, val_mask
                     ),
                     n_trials=n_trials,
