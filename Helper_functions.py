@@ -273,8 +273,11 @@ def train_and_test_NMW_models(model_name, data, train_perf_eval, val_perf_eval, 
             #x_train = scaler.fit_transform(x_train)
             #x_test = scaler.transform(x_test)
             svm_model.fit(x_train, y_train)
+            del x_train, y_train
+            gc.collect()
             pred = svm_model.predict(x_test)
             prob = svm_model.predict_proba(x_test)
+            del x_test
             metrics = calculate_metrics(y_test, pred, prob)
             return metrics
         case "RF":
@@ -290,9 +293,14 @@ def train_and_test_NMW_models(model_name, data, train_perf_eval, val_perf_eval, 
             #x_train = scaler.fit_transform(x_train)
             #x_test = scaler.transform(x_test)
             rf_model.fit(x_train, y_train)
+            del x_train, y_train
+            gc.collect()
             pred = rf_model.predict(x_test)
             prob = rf_model.predict_proba(x_test)
+            del x_test
             metrics = calculate_metrics(y_test, pred, prob)
+            del rf_model
+            gc.collect()
             return metrics
         case "XGB":
             from xgboost import XGBClassifier
@@ -311,9 +319,14 @@ def train_and_test_NMW_models(model_name, data, train_perf_eval, val_perf_eval, 
             scale_pos_weight = float(neg) / max(1.0, float(pos))
             xgb_model = XGBClassifier(max_depth=max_depth, n_estimators=n_estimators, scale_pos_weight=scale_pos_weight)
             xgb_model.fit(x_train, y_train)
+            del x_train, y_train
+            gc.collect()
             pred = xgb_model.predict(x_test)
             prob = xgb_model.predict_proba(x_test)
+            del x_test
             metrics = calculate_metrics(y_test, pred, prob)
+            del xgb_model
+            gc.collect()
             return metrics
         
 @contextmanager

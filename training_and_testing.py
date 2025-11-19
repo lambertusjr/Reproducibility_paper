@@ -40,7 +40,7 @@ def train_and_validate(
         'f1_illicit': [],
         'roc_auc': [],
         'roc_auc_illicit': [],
-        'PR_curve': [],
+        #'PR_curve': [],
         'PRAUC': [],
         'kappa': [] 
     }
@@ -52,9 +52,6 @@ def train_and_validate(
 
     for epoch in range(num_epochs):
         train_loss = model_wrapper.train_step(data, data.train_perf_eval_mask)
-        
-        gc.collect()
-        torch.cuda.empty_cache()
 
         val_loss, val_metrics = model_wrapper.evaluate(data, data.val_perf_eval_mask)
         
@@ -67,7 +64,7 @@ def train_and_validate(
         metrics['f1_illicit'].append(val_metrics['f1_illicit'])
         metrics['roc_auc'].append(val_metrics['roc_auc'])
         metrics['roc_auc_illicit'].append(val_metrics['roc_auc_illicit'])
-        metrics['PR_curve'].append(val_metrics['PR_curve'])
+        #metrics['PR_curve'].append(val_metrics['PR_curve'])
         metrics['PRAUC'].append(val_metrics['PRAUC'])
         metrics['kappa'].append(val_metrics['kappa'])
 

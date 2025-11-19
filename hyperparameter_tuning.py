@@ -161,7 +161,7 @@ def run_optimization(models, data, train_perf_eval, val_perf_eval, test_perf_eva
         study_name = f'{model_name}_optimization on {data_for_optimization} dataset'
         db_path = 'sqlite:///optimization_results.db'
 
-        if check_study_existence(model_name, data_for_optimization): # Assumes check_study_existence logic is correct
+        if check_study_existence(model_name, data_for_optimization): 
             study = optuna.load_study(study_name=study_name, storage=db_path)
         else:
             study = optuna.create_study(
