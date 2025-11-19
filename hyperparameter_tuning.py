@@ -196,7 +196,7 @@ def run_optimization(models, data, train_perf_eval, val_perf_eval, test_perf_eva
                 # Note: data, train_perf_eval, etc., are now the device tensors
                 study.optimize(
                     lambda trial: run_trial_with_aggressive_cleanup( 
-                        objective, model_name, trial, model_name, data, train_perf_eval, val_perf_eval, train_mask, val_mask
+                        objective, trial, model_name, data, train_perf_eval, val_perf_eval, train_mask, val_mask
                     ),
                     n_trials=n_trials,
                     callbacks=[_optuna_progress_callback]
