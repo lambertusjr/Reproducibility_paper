@@ -22,7 +22,7 @@ from torch_geometric.data import DataLoader, Data
 from torch_geometric.nn import GCNConv, GATConv, GINConv, global_mean_pool
 
 
-
+torch.cuda.memory._record_memory_history(max_entries=100000)
 
 
 
@@ -63,7 +63,7 @@ else:
     #IBM_data_HiMedium = IBMAMLDataset_HiMedium(root='/Users/Lambertus/Desktop/Datasets/IBM_AML_dataset/HiMedium')[0]
     #IBM_data_LiMedium = IBMAMLDataset_LiMedium(root='/Users/Lambertus/Desktop/Datasets/IBM_AML_dataset/LiMedium')[0]
     #Processing AMLSim dataset
-    AMLSim_data = AMLSimDataset(root='/Users/Lambertus/Desktop/Datasets/AMLSim_dataset')[0]
+    #AMLSim_data = AMLSimDataset(root='/Users/Lambertus/Desktop/Datasets/AMLSim_dataset')[0]
 
 # %%
 from torch.optim import Adam
@@ -110,12 +110,12 @@ for x in datasets:
         case "AMLSim":
             data_for_optimization = "AMLSim"
             data = AMLSim_data
-            
+    data = data.to('cuda' if torch.cuda.is_available() else 'cpu')
     def save_testing_results_csv(results, path=f"{data_for_optimization}_testing_results.csv"):
         df = pd.DataFrame(results)
         df.to_csv(f"csv_results/{data_for_optimization}_testing_results.csv", index=False)
     model_parameters, testing_results = run_optimization(
-        models=['GCN', 'GAT', 'GIN', 'XGB', 'RF', 'MLP'], #'XGB', 'RF', 'MLP', 'GCN', 'GAT', 'GIN'
+        models=[ 'GAT', 'GIN', 'XGB', 'RF', 'MLP'], #'XGB', 'RF', 'MLP', 'GCN', 'GAT', 'GIN'
         data=data,
         train_perf_eval=data.train_perf_eval_mask,
         val_perf_eval=data.val_perf_eval_mask,

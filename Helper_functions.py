@@ -237,7 +237,7 @@ def _run_wrapper_model_test(model_name, data, params, criterion, early_stop_args
         model = GCN(num_node_features=data.num_features, num_classes=2, hidden_units=hidden_units).to(device)
     elif model_name == "GAT":
         num_heads = params.get("num_heads", 4)
-        model = GAT(num_node_features=data.num_features, num_classes=2, hidden_units=hidden_units, num_heads=num_heads).to(device)
+        model = GAT(num_node_features=data.num_features, num_classes=2, hidden_units=hidden_units, num_heads=num_heads)#.to(device)
     elif model_name == "GIN":
         model = GIN(num_node_features=data.num_features, num_classes=2, hidden_units=hidden_units).to(device)
     else:
@@ -415,3 +415,21 @@ def check_study_existence(model_name, data_for_optimization):
         # 5. Study does not exist: return False
         print(f"Study '{study_name}' not found.")
         return False
+    
+    
+def print_gpu_tensors():
+    print(f"{'Type':<20} | {'Size':<20} | {'Memory (MB)':<10}")
+    print("-" * 60)
+    total_mem = 0
+    for obj in gc.get_objects():
+        try:
+            # Check for Tensors or Parameter objects
+            if torch.is_tensor(obj) or (hasattr(obj, 'data') and torch.is_tensor(obj.data)):
+                if obj.is_cuda:
+                    mem = obj.element_size() * obj.nelement() / 1024**2
+                    total_mem += mem
+                    print(f"{str(type(obj).__name__):<20} | {str(list(obj.size())):<20} | {mem:.2f}")
+        except:
+            pass
+    print("-" * 60)
+    print(f"Total Approximate Tensor Memory: {total_mem:.2f} MB")

@@ -47,8 +47,6 @@ def train_and_validate(
     epochs_without_improvement = 0
     best_epoch = -1
     
-    optimizer = model_wrapper.optimizer
-    optimizer.zero_grad()
 
     for epoch in range(num_epochs):
         train_loss = model_wrapper.train_step(data, data.train_perf_eval_mask)
@@ -108,9 +106,9 @@ def train_and_test(
     log_early_stop=False
 ):
     
-    device = 'cuda' if torch.cuda.is_available() else 'cpu'
-    model_wrapper.model.to(device)
-    data = data.to(device)
+    # device = 'cuda' if torch.cuda.is_available() else 'cpu'
+    # model_wrapper.model.to(device)
+    #data = data.to(device)
     
     
     metrics, best_model_wts, best_f1 = train_and_validate(

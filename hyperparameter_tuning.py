@@ -9,7 +9,7 @@ from tqdm import tqdm, trange
 from training_and_testing import train_and_validate, train_and_test
 from torch.optim import Adam
 import gc
-
+from Helper_functions import print_gpu_tensors
 models = ['MLP', 'SVM', 'XGB', 'RF', 'GCN', 'GAT', 'GIN']
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -52,7 +52,7 @@ def objective(trial, model, data, train_perf_eval, val_perf_eval, train_mask, va
             learning_rate = trial.suggest_float('learning_rate', 0.001, 0.01, log=False) #Previous learning rate range was too high for CE
         else:
             gamma_focal = trial.suggest_float('gamma_focal', 0.2, 5.0)
-            alpha_weights = alpha_weights.to(device)
+            alpha_weights = alpha_weights
             criterion = FocalLoss(alpha=alpha_weights, gamma=gamma_focal)
             
         early_stop_patience = trial.suggest_int('early_stop_patience', 5, 40)
@@ -70,11 +70,11 @@ def objective(trial, model, data, train_perf_eval, val_perf_eval, train_mask, va
         wrapper_models = ['MLP', 'GCN', 'GAT', 'GIN']
         sklearn_models = ['SVM', 'XGB', 'RF']
         
-        # --- DATA IS ALREADY ON DEVICE ---
-        # data = data.to(device) # <--- REMOVED
-        # train_perf_eval = train_perf_eval.to(device) # <--- REMOVED
-        # val_perf_eval = val_perf_eval.to(device) # <--- REMOVED
-
+        
+        # data = data.to(device) 
+        # train_perf_eval = train_perf_eval.to(device) 
+        # val_perf_eval = val_perf_eval.to(device) 
+        print_gpu_tensors()
         if model in wrapper_models:
             optimizer = torch.optim.Adam(model_instance.parameters(), lr=learning_rate, weight_decay=weight_decay)
             model_wrapper = ModelWrapper(model_instance, optimizer, criterion)
@@ -84,6 +84,8 @@ def objective(trial, model, data, train_perf_eval, val_perf_eval, train_mask, va
                 model_wrapper, data,num_epochs=num_epochs,
                 **trial_early_stop_args
             )
+            print_gpu_tensors()
+            torch.cuda.memory._dump_snapshot("Memory snapshot after training")
             return best_f1
 
         elif model in sklearn_models:
@@ -97,13 +99,14 @@ def objective(trial, model, data, train_perf_eval, val_perf_eval, train_mask, va
             pred = model_instance.predict(val_x)
             prob = model_instance.predict_proba(val_x)
             metrics = calculate_metrics(val_y, pred, prob)
-            
+            print_gpu_tensors()
             # Clean up large numpy arrays
             del train_x, train_y, val_x, val_y, pred, prob
             
             return metrics['f1_illicit']
-        
+    
     finally:
+        print_gpu_tensors()
         # --- GUARANTEED CLEANUP ---
         # This block runs whether the trial succeeds, fails, or is pruned.
         if model_instance is not None:
@@ -122,6 +125,9 @@ def objective(trial, model, data, train_perf_eval, val_perf_eval, train_mask, va
             del prob
         if 'best_model_wts' in locals():
             del best_model_wts
+        if 'metrics' in locals():
+            del metrics
+        
         
         gc.collect() # Run Python's garbage collector
         if device == 'cuda':
@@ -139,7 +145,6 @@ def run_trial_with_aggressive_cleanup(trial_func, *args, **kwargs):
     finally:
         # Force cleanup of any lingering tensors
         if torch.cuda.is_available():
-            torch.cuda.synchronize()  # Wait for all kernels to finish
             torch.cuda.empty_cache()  # Clear cache
         gc.collect(generation=2)  # Force full garbage collection
         
@@ -147,10 +152,10 @@ def run_optimization(models, data, train_perf_eval, val_perf_eval, test_perf_eva
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
     # --- MOVE DATA AND MASKS TO DEVICE ONCE ---
-    data = data.to(device)
-    train_perf_eval = train_perf_eval.to(device)
-    val_perf_eval = val_perf_eval.to(device)
-    test_perf_eval = test_perf_eval.to(device)
+    # data = data.to(device)
+    # train_perf_eval = train_perf_eval.to(device)
+    # val_perf_eval = val_perf_eval.to(device)
+    # test_perf_eval = test_perf_eval.to(device)
     # train_mask and val_mask are not used in objective, move if needed
     # train_mask = train_mask.to(device) 
     # val_mask = val_mask.to(device)
@@ -219,7 +224,7 @@ def run_optimization(models, data, train_perf_eval, val_perf_eval, test_perf_eva
         early_stop_args = _early_stop_args_from(params_for_model)
 
         # --- Final Test Runs (Refactored) ---
-        for _ in trange(30, desc=f"Runs for {model_name}", leave=False, unit="run"):
+        for _ in trange(10, desc=f"Runs for {model_name}", leave=False, unit="run"):
             test_metrics = {}
             best_f1 = None # Not all test runs return this
 
