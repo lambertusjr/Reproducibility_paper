@@ -25,6 +25,7 @@ class ModelWrapper:
     def train_step(self, data, mask):
         if data.x.dtype == torch.float64:
             data.x = data.x.float()
+        self.model = self.model.float()
         self.model.train()
         self.optimizer.zero_grad()
         with _autocast(enabled=self._use_amp):
@@ -117,8 +118,8 @@ class GAT(nn.Module):
         # Keep the total latent size roughly equal to hidden_units while limiting per-head width
         per_head_dim = max(1, math.ceil(hidden_units / num_heads))
         total_hidden = per_head_dim * num_heads
-        self.conv1 = GATConv(num_node_features, per_head_dim, heads=num_heads, dropout=0.6)
-        self.conv2 = GATConv(total_hidden, num_classes, heads=1, concat=False, dropout=0.6)
+        self.conv1 = GATConv(num_node_features, per_head_dim, heads=num_heads, dropout=0.6, add_self_loops=False)
+        self.conv2 = GATConv(total_hidden, num_classes, heads=1, concat=False, dropout=0.6, add_self_loops=False)
 
     def forward(self, data):
         x, edge_index = data.x, data.edge_index

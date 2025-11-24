@@ -49,9 +49,9 @@ class EllipticDataset(InMemoryDataset):
         
         classes_df = classes_df.sort_values('txId').set_index('txId')
         # 3. Create Tensors
-        features_tensor = torch.tensor(features_df.drop(columns=['txId']).values, dtype=torch.float)
-        edge_index_tensor = torch.tensor(edgelist_df.values.T, dtype=torch.long)
-        y_tensor = torch.tensor(classes_df['class'].values, dtype=torch.long)
+        features_tensor = torch.tensor(features_df.drop(columns=['txId']).values, dtype=torch.float32)
+        edge_index_tensor = torch.tensor(edgelist_df.values.T, dtype=torch.int32)
+        y_tensor = torch.tensor(classes_df['class'].values, dtype=torch.int16)
 
         # 4. Create Data Object
         data = Data(x=features_tensor, edge_index=edge_index_tensor, y=y_tensor)

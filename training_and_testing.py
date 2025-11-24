@@ -96,7 +96,7 @@ import copy
 def update_best_weights(model, best_f1, current_f1, best_f1_model_wts):
     if current_f1 > best_f1:
         best_f1 = current_f1
-        best_f1_model_wts = copy.deepcopy(model.state_dict())
+        best_f1_model_wts = {k: v.cpu().clone() for k, v in model.state_dict().items()}
     return best_f1, best_f1_model_wts
 
 def train_and_test(
