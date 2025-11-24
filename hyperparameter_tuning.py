@@ -52,7 +52,7 @@ def objective(trial, model, data, train_perf_eval, val_perf_eval, train_mask, va
             learning_rate = trial.suggest_float('learning_rate', 0.001, 0.01, log=False) #Previous learning rate range was too high for CE
         else:
             gamma_focal = trial.suggest_float('gamma_focal', 0.2, 5.0)
-            alpha_weights = alpha_weights.to(device)
+            alpha_weights = alpha_weights
             criterion = FocalLoss(alpha=alpha_weights, gamma=gamma_focal)
             
         early_stop_patience = trial.suggest_int('early_stop_patience', 5, 40)
@@ -122,6 +122,7 @@ def objective(trial, model, data, train_perf_eval, val_perf_eval, train_mask, va
             del prob
         if 'best_model_wts' in locals():
             del best_model_wts
+            
         
         gc.collect() # Run Python's garbage collector
         if device == 'cuda':
@@ -145,15 +146,6 @@ def run_trial_with_aggressive_cleanup(trial_func, *args, **kwargs):
         
 def run_optimization(models, data, train_perf_eval, val_perf_eval, test_perf_eval, train_mask, val_mask, data_for_optimization):
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
-
-    # --- MOVE DATA AND MASKS TO DEVICE ONCE ---
-    data = data.to(device)
-    train_perf_eval = train_perf_eval.to(device)
-    val_perf_eval = val_perf_eval.to(device)
-    test_perf_eval = test_perf_eval.to(device)
-    # train_mask and val_mask are not used in objective, move if needed
-    # train_mask = train_mask.to(device) 
-    # val_mask = val_mask.to(device)
 
     # --- Dynamically create result dictionaries ---
     model_parameters = {model_name: [] for model_name in models}

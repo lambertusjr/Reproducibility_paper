@@ -82,9 +82,6 @@ if prototyping:
         val_loss, val_metrics = model_wrapper.evaluate(data, data.val_perf_eval_mask)
         print(f"Epoch {i+1:03d}, Train Loss: {train_loss:.4f}, Val Loss: {val_loss:.4f}, Val F1 illicit: {val_metrics['f1_illicit']:.4f}")
 
-# %%
-#from training_and_testing import train_and_test
-#test_metrics, best_f1 = train_and_test(model_wrapper, data, data.test_perf_eval_mask, num_epochs=num_epochs)
 # %% Optuna runs
 
 from hyperparameter_tuning import run_optimization
@@ -110,18 +107,24 @@ for x in datasets:
         case "AMLSim":
             data_for_optimization = "AMLSim"
             data = AMLSim_data
-            
+    device='cuda' if torch.cuda.is_available() else 'cpu'
+    data = data.to(device)
+    train_perf_eval = data.train_perf_eval_mask.to(device)
+    val_perf_eval=data.val_perf_eval_mask.to(device)
+    test_perf_eval=data.test_perf_eval_mask.to(device)
+    train_mask=data.train_mask.to(device)
+    val_mask=data.val_mask.to(device)
     def save_testing_results_csv(results, path=f"{data_for_optimization}_testing_results.csv"):
         df = pd.DataFrame(results)
         df.to_csv(f"csv_results/{data_for_optimization}_testing_results.csv", index=False)
     model_parameters, testing_results = run_optimization(
         models=['GCN', 'GAT', 'GIN', 'XGB', 'RF', 'MLP'], #'XGB', 'RF', 'MLP', 'GCN', 'GAT', 'GIN'
         data=data,
-        train_perf_eval=data.train_perf_eval_mask,
-        val_perf_eval=data.val_perf_eval_mask,
-        test_perf_eval=data.test_perf_eval_mask,
-        train_mask=data.train_mask,
-        val_mask=data.val_mask,
+        train_perf_eval= train_perf_eval,
+        val_perf_eval= val_perf_eval,
+        test_perf_eval = test_perf_eval,
+        train_mask = train_mask,
+        val_mask = val_mask,
         data_for_optimization=data_for_optimization
     )
     save_testing_results_csv(testing_results, path=f"{data_for_optimization}_testing_results.csv")

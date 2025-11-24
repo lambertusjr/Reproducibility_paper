@@ -109,8 +109,8 @@ def train_and_test(
 ):
     
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
-    model_wrapper.model.to(device)
-    data = data.to(device)
+    #model_wrapper.model.to(device)
+    #data = data.to(device)
     
     
     metrics, best_model_wts, best_f1 = train_and_validate(
