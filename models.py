@@ -23,6 +23,8 @@ class ModelWrapper:
         self._scaler = _make_scaler(enabled=self._use_amp)
         
     def train_step(self, data, mask):
+        if data.x.dtype == torch.float64:
+            data.x = data.x.float()
         self.model.train()
         self.optimizer.zero_grad()
         with _autocast(enabled=self._use_amp):

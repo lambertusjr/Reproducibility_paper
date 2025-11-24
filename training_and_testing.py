@@ -15,6 +15,8 @@ def train_and_validate(
     model_wrapper,
     data,
     num_epochs,
+    train_perf_eval_mask,
+    val_perf_eval_mask,
     best_f1=-1,
     best_f1_model_wts=None,
     patience=None,
@@ -23,10 +25,10 @@ def train_and_validate(
 ):
     # Device alignment guard (fail fast with clear message)
     mdl_dev = next(model_wrapper.model.parameters()).device
-    if not (data.x.device == mdl_dev and data.train_perf_eval_mask.device == mdl_dev and data.val_perf_eval_mask.device == mdl_dev):
+    if not (data.x.device == mdl_dev and train_perf_eval_mask.device == mdl_dev and val_perf_eval_mask.device == mdl_dev):
         raise RuntimeError(
             f"Device mismatch: model={mdl_dev}, data.x={data.x.device}, "
-            f"train_mask={data.train_perf_eval_mask.device}, val_mask={data.val_perf_eval_mask.device}"
+            f"train_mask={data[train_perf_eval_mask].device}, val_mask={data[val_perf_eval_mask].device}"
         )
 
     
@@ -49,9 +51,9 @@ def train_and_validate(
     
 
     for epoch in range(num_epochs):
-        train_loss = model_wrapper.train_step(data, data.train_perf_eval_mask)
+        train_loss = model_wrapper.train_step(data, train_perf_eval_mask)
 
-        val_loss, val_metrics = model_wrapper.evaluate(data, data.val_perf_eval_mask)
+        val_loss, val_metrics = model_wrapper.evaluate(data, val_perf_eval_mask)
         
         metrics['accuracy'].append(val_metrics['accuracy'])
         metrics['precision_weighted'].append(val_metrics['precision'])

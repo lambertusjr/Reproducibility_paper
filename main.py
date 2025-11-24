@@ -8,6 +8,7 @@ num_epochs = 200
 
 #%% Setup
 #Importing all packages
+import gc
 import platform
 import os
 
@@ -50,8 +51,8 @@ if pc == "Darwin":
     #Processing IBM AML dataset
     IBM_data_HiSmall = IBMAMLDataset_HiSmall(root='/Users/lambertusvanzyl/Documents/Datasets/IBM_AML_dataset/HiSmall')[0]
     IBM_data_LiSmall = IBMAMLDataset_LiSmall(root='/Users/lambertusvanzyl/Documents/Datasets/IBM_AML_dataset/LiSmall')[0]
-    IBM_data_HiMedium = IBMAMLDataset_HiMedium(root='/Users/lambertusvanzyl/Documents/Datasets/IBM_AML_dataset/HiMedium')[0]
-    IBM_data_LiMedium = IBMAMLDataset_LiMedium(root='/Users/lambertusvanzyl/Documents/Datasets/IBM_AML_dataset/LiMedium')[0]
+    #IBM_data_HiMedium = IBMAMLDataset_HiMedium(root='/Users/lambertusvanzyl/Documents/Datasets/IBM_AML_dataset/HiMedium')[0]
+    #IBM_data_LiMedium = IBMAMLDataset_LiMedium(root='/Users/lambertusvanzyl/Documents/Datasets/IBM_AML_dataset/LiMedium')[0]
     #Processing AMLSim dataset
     AMLSim_data = AMLSimDataset(root='/Users/lambertusvanzyl/Documents/Datasets/AMLSim_dataset')[0]
 else:
@@ -114,6 +115,16 @@ for x in datasets:
     test_perf_eval=data.test_perf_eval_mask.to(device)
     train_mask=data.train_mask.to(device)
     val_mask=data.val_mask.to(device)
+    test_mask=data.test_mask.to(device)
+    del data.train_perf_eval_mask
+    del data.val_perf_eval_mask
+    del data.test_perf_eval_mask
+    del data.train_mask
+    del data.val_mask
+    del data.test_mask
+    gc.collect()
+    if device == 'cuda':
+        torch.cuda.empty_cache()
     def save_testing_results_csv(results, path=f"{data_for_optimization}_testing_results.csv"):
         df = pd.DataFrame(results)
         df.to_csv(f"csv_results/{data_for_optimization}_testing_results.csv", index=False)

@@ -82,7 +82,8 @@ def objective(trial, model, data, train_perf_eval, val_perf_eval, train_mask, va
             model_wrapper.model.to(device)
             
             metrics, best_model_wts, best_f1 = train_and_validate(
-                model_wrapper, data,num_epochs=num_epochs,
+                model_wrapper, data,num_epochs=num_epochs, 
+                train_perf_eval_mask=train_perf_eval, val_perf_eval_mask=val_perf_eval,
                 **trial_early_stop_args
             )
             print_gpu_tensors()

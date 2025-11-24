@@ -433,3 +433,35 @@ def print_gpu_tensors():
             pass
     print("-" * 60)
     print(f"Total Approximate Tensor Memory: {total_mem:.2f} MB")
+    
+    import torch
+import gc
+
+def print_gpu_tensors_with_names(model=None):
+    # 1. Create a map of ID -> Name for model parameters/buffers
+    tensor_names = {}
+    if model:
+        for name, param in model.named_parameters():
+            tensor_names[id(param)] = f"Param: {name}"
+        for name, buf in model.named_buffers():
+            tensor_names[id(buf)] = f"Buffer: {name}"
+
+    # 2. Create a map of ID -> Name for global variables
+    for name, val in globals().items():
+        if torch.is_tensor(val):
+            tensor_names[id(val)] = f"Global: {name}"
+
+    # 3. Iterate through all objects
+    print(f"{'Name':<50} | {'Shape':<20} | {'Size (MB)':<10}")
+    print("-" * 85)
+    
+    for obj in gc.get_objects():
+        try:
+            if torch.is_tensor(obj) or (hasattr(obj, 'data') and torch.is_tensor(obj.data)):
+                # Only print if on GPU
+                if obj.is_cuda:
+                    name = tensor_names.get(id(obj), "Unknown (Intermediate/Orphan)")
+                    size_mb = (obj.element_size() * obj.nelement()) / 1024 ** 2
+                    print(f"{name:<50} | {str(list(obj.size())):<20} | {size_mb:.2f}")
+        except:
+            pass # Handle errors accessing closed objects
