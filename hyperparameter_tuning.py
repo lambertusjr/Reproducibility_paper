@@ -72,10 +72,8 @@ def objective(trial, model, data, train_perf_eval, val_perf_eval, train_mask, va
         sklearn_models = ['SVM', 'XGB', 'RF']
         
         
-        # data = data.to(device) 
-        # train_perf_eval = train_perf_eval.to(device) 
-        # val_perf_eval = val_perf_eval.to(device) 
-        print_gpu_tensors()
+        
+        #print_gpu_tensors()
         if model in wrapper_models:
             optimizer = torch.optim.Adam(model_instance.parameters(), lr=learning_rate, weight_decay=weight_decay)
             model_wrapper = ModelWrapper(model_instance, optimizer, criterion)
@@ -86,7 +84,7 @@ def objective(trial, model, data, train_perf_eval, val_perf_eval, train_mask, va
                 train_perf_eval_mask=train_perf_eval, val_perf_eval_mask=val_perf_eval,
                 **trial_early_stop_args
             )
-            print_gpu_tensors()
+            #print_gpu_tensors()
             torch.cuda.memory._dump_snapshot("Memory snapshot after training")
             return best_f1
 
@@ -101,14 +99,14 @@ def objective(trial, model, data, train_perf_eval, val_perf_eval, train_mask, va
             pred = model_instance.predict(val_x)
             prob = model_instance.predict_proba(val_x)
             metrics = calculate_metrics(val_y, pred, prob)
-            print_gpu_tensors()
+            #print_gpu_tensors()
             # Clean up large numpy arrays
             del train_x, train_y, val_x, val_y, pred, prob
             
             return metrics['f1_illicit']
     
     finally:
-        print_gpu_tensors()
+        #print_gpu_tensors()
         # --- GUARANTEED CLEANUP ---
         # This block runs whether the trial succeeds, fails, or is pruned.
         if model_instance is not None:

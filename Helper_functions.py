@@ -208,7 +208,7 @@ def _get_model_instance(trial, model, data, device):
 
     elif model == 'GAT':
         from models import GAT
-        hidden_units = trial.suggest_int('hidden_units', 32, 256)
+        hidden_units = trial.suggest_int('hidden_units', 32, 128)
         num_heads = trial.suggest_int('num_heads', 1, 8)
         return GAT(num_node_features=data.x.shape[1], num_classes=2, hidden_units=hidden_units, num_heads=num_heads)
 
@@ -237,7 +237,7 @@ def _run_wrapper_model_test(model_name, data, params, criterion, early_stop_args
         model = GCN(num_node_features=data.num_features, num_classes=2, hidden_units=hidden_units).to(device)
     elif model_name == "GAT":
         num_heads = params.get("num_heads", 4)
-        model = GAT(num_node_features=data.num_features, num_classes=2, hidden_units=hidden_units, num_heads=num_heads)#.to(device)
+        model = GAT(num_node_features=data.num_features, num_classes=2, hidden_units=hidden_units, num_heads=num_heads).to(device)
     elif model_name == "GIN":
         model = GIN(num_node_features=data.num_features, num_classes=2, hidden_units=hidden_units).to(device)
     else:
@@ -254,6 +254,9 @@ def _run_wrapper_model_test(model_name, data, params, criterion, early_stop_args
     return train_and_test(
         model_wrapper=model_wrapper,
         data=data,
+        train_perf_eval = train_perf_eval,
+        val_perf_eval = val_perf_eval,
+        test_perf_eval = test_perf_eval,
         **early_stop_args
     )
     

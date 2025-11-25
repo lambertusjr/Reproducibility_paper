@@ -28,7 +28,7 @@ def train_and_validate(
     if not (data.x.device == mdl_dev and train_perf_eval_mask.device == mdl_dev and val_perf_eval_mask.device == mdl_dev):
         raise RuntimeError(
             f"Device mismatch: model={mdl_dev}, data.x={data.x.device}, "
-            f"train_mask={data[train_perf_eval_mask].device}, val_mask={data[val_perf_eval_mask].device}"
+            f"train_mask={train_perf_eval_mask.device}, val_mask={val_perf_eval_mask.device}"
         )
 
     
@@ -102,6 +102,9 @@ def update_best_weights(model, best_f1, current_f1, best_f1_model_wts):
 def train_and_test(
     model_wrapper,
     data,
+    train_perf_eval,
+    val_perf_eval,
+    test_perf_eval,
     num_epochs=200,
     patience=None,
     min_delta=0.0,
@@ -117,12 +120,14 @@ def train_and_test(
         model_wrapper,
         data,
         num_epochs,
+        train_perf_eval,
+        val_perf_eval,
         patience=patience,
         min_delta=min_delta,
         log_early_stop=log_early_stop
     )
     
     model_wrapper.model.load_state_dict(best_model_wts)
-    test_loss, test_metrics = model_wrapper.evaluate(data, data.test_perf_eval_mask)
+    test_loss, test_metrics = model_wrapper.evaluate(data, test_perf_eval)
     
     return test_metrics, best_f1
