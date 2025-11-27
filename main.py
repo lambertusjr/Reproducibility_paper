@@ -87,7 +87,7 @@ if prototyping:
 
 from hyperparameter_tuning import run_optimization
 #datasets = ["IBM_AML_HiSmall", "IBM_AML_LiSmall", "IBM_AML_HiMedium", "IBM_AML_LiMedium", "AMLSim"]
-datasets = ['IBM_AML_HiSmall', 'IBM_AML_LiSmall']
+datasets = ['IBM_AML_LiSmall']
 for x in datasets:
     match x:
         case "Elliptic":

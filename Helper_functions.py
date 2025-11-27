@@ -22,8 +22,8 @@ def calculate_scale_pos_weight(data):
     """
     Calculate the scale_pos_weight for imbalanced datasets.
     """
-    train_mask = data.train_mask
-    y_train = data.y[train_mask].cpu().numpy()
+    #train_mask = data[train_mask]
+    y_train = data.y.cpu().numpy()
     pos = (y_train == 1).sum()
     neg = (y_train == 0).sum()
     return float(neg) / float(pos)
@@ -214,7 +214,7 @@ def _get_model_instance(trial, model, data, device):
 
     elif model == 'GIN':
         from models import GIN
-        hidden_units = trial.suggest_int('hidden_units', 32, 256)
+        hidden_units = trial.suggest_int('hidden_units', 32, 160)
         return GIN(num_node_features=data.x.shape[1], num_classes=2, hidden_units=hidden_units)
 
     else:

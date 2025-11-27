@@ -225,7 +225,7 @@ def run_optimization(models, data, train_perf_eval, val_perf_eval, test_perf_eva
         early_stop_args = _early_stop_args_from(params_for_model)
 
         # --- Final Test Runs (Refactored) ---
-        for _ in trange(10, desc=f"Runs for {model_name}", leave=False, unit="run"):
+        for _ in trange(30, desc=f"Runs for {model_name}", leave=False, unit="run"):
             test_metrics = {}
             best_f1 = None # Not all test runs return this
 
