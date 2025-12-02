@@ -21,6 +21,7 @@ import torch.nn.functional as F
 import torch_geometric
 from torch_geometric.data import DataLoader, Data
 from torch_geometric.nn import GCNConv, GATConv, GINConv, global_mean_pool
+import torch_geometric.transforms as T
 
 
 torch.cuda.memory._record_memory_history(max_entries=100000)
@@ -60,7 +61,7 @@ else:
     #elliptic_data = EllipticDataset(root='/Users/Lambertus/Desktop/Datasets/Elliptic_dataset')[0]
     #Processing IBM AML dataset
     IBM_data_HiSmall = IBMAMLDataset_HiSmall(root='/Users/Lambertus/Desktop/Datasets/IBM_AML_dataset/HiSmall')[0]
-    IBM_data_LiSmall = IBMAMLDataset_LiSmall(root='/Users/Lambertus/Desktop/Datasets/IBM_AML_dataset/LiSmall')[0]
+    #IBM_data_LiSmall = IBMAMLDataset_LiSmall(root='/Users/Lambertus/Desktop/Datasets/IBM_AML_dataset/LiSmall')[0]
     #IBM_data_HiMedium = IBMAMLDataset_HiMedium(root='/Users/Lambertus/Desktop/Datasets/IBM_AML_dataset/HiMedium')[0]
     #IBM_data_LiMedium = IBMAMLDataset_LiMedium(root='/Users/Lambertus/Desktop/Datasets/IBM_AML_dataset/LiMedium')[0]
     #Processing AMLSim dataset
@@ -108,11 +109,14 @@ for x in datasets:
         case "AMLSim":
             data_for_optimization = "AMLSim"
             data = AMLSim_data
+            
+    data = T.ToSparseTensor()(data)
+    
     device='cuda' if torch.cuda.is_available() else 'cpu'
     data = data.to(device)
-    train_perf_eval = data.train_perf_eval_mask.to(device)
-    val_perf_eval=data.val_perf_eval_mask.to(device)
-    test_perf_eval=data.test_perf_eval_mask.to(device)
+    train_perf_eval = data.train_perf_eval_mask
+    val_perf_eval=data.val_perf_eval_mask
+    test_perf_eval=data.test_perf_eval_mask
     train_mask=data.train_mask.to(device)
     val_mask=data.val_mask.to(device)
     test_mask=data.test_mask.to(device)
