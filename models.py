@@ -52,9 +52,10 @@ class ModelWrapper:
             with _autocast(enabled=self._use_amp):
                 out = self.model(data)
                 loss = self.criterion(out[mask], data.y[mask])
-            pred = out.argmax(dim=1)
-            probs = torch.nn.functional.softmax(out, dim=1)
-        metrics = calculate_metrics(data.y[mask].cpu().numpy(), pred[mask].cpu().numpy(), probs[mask].cpu().numpy())
+            out_masked = out[mask]
+            pred = out_masked.argmax(dim=1)
+            probs = torch.nn.functional.softmax(out_masked, dim=1)
+        metrics = calculate_metrics(data.y[mask].cpu().numpy(), pred.cpu().numpy(), probs.cpu().numpy())
         return float(loss.detach()), metrics
     def get_loss(self, data, mask):
         self.model.train()
@@ -105,7 +106,7 @@ class GCN(torch.nn.Module):
         edge_index = data.adj_t if hasattr(data, 'adj_t') else data.edge_index
 
         x = self.conv1(x, edge_index)
-        x = F.relu(x)
+        x = F.relu(x, inplace=True)
         x = F.dropout(x, p=self.dropout, training=self.training)
         
         # Output raw logits
@@ -125,7 +126,7 @@ class GAT(nn.Module):
         x = data.x
         edge_index = data.adj_t if hasattr(data, 'adj_t') else data.edge_index
         x = self.conv1(x, edge_index)
-        x = F.elu(x)
+        x = F.elu(x, inplace=True)
         x = self.conv2(x, edge_index)
         return x
     
@@ -141,7 +142,7 @@ class GIN(nn.Module):
 
         nn2 = nn.Sequential(
             nn.Linear(hidden_units, hidden_units),
-            nn.ReLU(),
+            nn.ReLU(inplace=True),
             nn.Linear(hidden_units, hidden_units)
         )
         self.conv2 = GINConv(nn2)
