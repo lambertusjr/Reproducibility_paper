@@ -170,11 +170,11 @@ def _get_model_instance(trial, model, data, device):
         return MLP(num_node_features=data.num_node_features, num_classes=2, hidden_units=hidden_units)
     
     elif model == 'SVM':
-        from sklearn.svm import SVC
-        kernel = trial.suggest_categorical('kernel', ['linear', 'rbf'])
-        degree = trial.suggest_int('degree', 2, 5)
-        C = trial.suggest_float('C', 0.1, 10.0, log=True)
-        return SVC(kernel=kernel, C=C, class_weight='balanced', degree=degree, probability=True)
+        from sklearn.linear_model import SGDClassifier
+        # Use 'hinge' for SVM, 'log_loss' for Logistic Regression (which gives probabilities directly)
+        # To get probabilities with SVM (hinge), you need calibration, so 'log_loss' is often a better proxy for fast "linear classification" with probs.
+        alpha = trial.suggest_float('alpha', 1e-5, 1e-1, log=True)
+        return SGDClassifier(loss='log_loss', alpha=alpha, class_weight='balanced', max_iter=1000, tol=1e-3)
 
     elif model == 'XGB':
         max_depth = trial.suggest_int('max_depth', 5, 15)
@@ -263,10 +263,9 @@ def _run_wrapper_model_test(model_name, data, params, criterion, early_stop_args
 def train_and_test_NMW_models(model_name, data, train_perf_eval, val_perf_eval, test_perf_eval, params_for_model):
     match model_name:
         case "SVM":
-            C = params_for_model.get("C", 1.0)
-            degree = params_for_model.get("degree", 3)
-            kernel = params_for_model.get("kernel", 'rbf')
-            svm_model = SVC(kernel=kernel, C=C, class_weight='balanced', degree=degree, probability=True)
+            from sklearn.linear_model import SGDClassifier
+            alpha = params_for_model.get("alpha", 0.0001)
+            svm_model = SGDClassifier(loss='log_loss', alpha=alpha, class_weight='balanced', max_iter=1000, tol=1e-3)
             combined_mask = train_perf_eval | val_perf_eval
             x_train = data.x[combined_mask].detach().cpu().numpy()
             y_train = data.y[combined_mask].detach().cpu().numpy()

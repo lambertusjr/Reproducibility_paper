@@ -61,7 +61,7 @@ else:
     #elliptic_data = EllipticDataset(root='/Users/Lambertus/Desktop/Datasets/Elliptic_dataset')[0]
     #Processing IBM AML dataset
     IBM_data_HiSmall = IBMAMLDataset_HiSmall(root='/Users/Lambertus/Desktop/Datasets/IBM_AML_dataset/HiSmall')[0]
-    #IBM_data_LiSmall = IBMAMLDataset_LiSmall(root='/Users/Lambertus/Desktop/Datasets/IBM_AML_dataset/LiSmall')[0]
+    IBM_data_LiSmall = IBMAMLDataset_LiSmall(root='/Users/Lambertus/Desktop/Datasets/IBM_AML_dataset/LiSmall')[0]
     #IBM_data_HiMedium = IBMAMLDataset_HiMedium(root='/Users/Lambertus/Desktop/Datasets/IBM_AML_dataset/HiMedium')[0]
     #IBM_data_LiMedium = IBMAMLDataset_LiMedium(root='/Users/Lambertus/Desktop/Datasets/IBM_AML_dataset/LiMedium')[0]
     #Processing AMLSim dataset
@@ -133,7 +133,7 @@ for x in datasets:
         df = pd.DataFrame(results)
         df.to_csv(f"csv_results/{data_for_optimization}_testing_results.csv", index=False)
     model_parameters, testing_results = run_optimization(
-        models=[ 'GAT', 'GIN', 'XGB', 'RF', 'MLP'], #'XGB', 'RF', 'MLP', 'GCN', 'GAT', 'GIN'
+        models=[ 'SVM'], #'XGB', 'RF', 'MLP', 'GCN', 'GAT', 'GIN'
         data=data,
         train_perf_eval= train_perf_eval,
         val_perf_eval= val_perf_eval,
